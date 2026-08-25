@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Code2 } from "lucide-react";
+import { Code2, Files, ListTree } from "lucide-react";
 import type { IconType } from "react-icons";
 import {
   SiC,
@@ -61,6 +61,7 @@ export default function LanguageBreakdown({
     pct: total > 0 ? ((bytes / total) * 100).toFixed(1) : "0",
     pctValue: total > 0 ? (bytes / total) * 100 : 0,
     chartValue: total > 0 ? Math.max((bytes / total) * 100, 0.35) : 0,
+    filesEstimate: Math.max(1, Math.round(bytes / 4000)),
   }));
   const languageRepos = (language: string) =>
     repos
@@ -95,6 +96,13 @@ export default function LanguageBreakdown({
                 </button>
               )}
             </div>
+            <div className="mb-1 grid grid-cols-[auto_minmax(0,1fr)_3rem_4rem_minmax(120px,1.5fr)] items-center gap-2 px-1 font-mono text-[9px] uppercase tracking-wide text-text-faint">
+              <span />
+              <span>language</span>
+              <span className="text-right">share</span>
+              <span className="text-right">files</span>
+              <span />
+            </div>
             <ul className="space-y-1.5">
                 {data.map((d, index) => (
                   <motion.li
@@ -113,7 +121,7 @@ export default function LanguageBreakdown({
                       type="button"
                       onClick={() => setSelectedLanguage(selectedLanguage === d.name ? null : d.name)}
                       aria-pressed={selectedLanguage === d.name}
-                      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_3rem_minmax(120px,1.5fr)] items-center gap-2 rounded px-1 py-1 text-left text-xs transition-colors hover:bg-surface-raised ${
+                      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_3rem_4rem_minmax(120px,1.5fr)] items-center gap-2 rounded px-1 py-1 text-left text-xs transition-colors hover:bg-surface-raised ${
                         selectedLanguage && selectedLanguage !== d.name ? "opacity-45" : ""
                       } ${selectedLanguage === d.name ? "bg-surface-raised" : ""}`}
                     >
@@ -123,6 +131,7 @@ export default function LanguageBreakdown({
                       })()}
                       <span className="truncate text-text">{d.name}</span>
                       <span className="shrink-0 text-right font-mono text-text-faint">{d.pct}%</span>
+                      <span className="shrink-0 text-right font-mono text-text-faint">{d.filesEstimate.toLocaleString()}</span>
                       <span className="h-2 overflow-hidden rounded-full bg-surface-raised" aria-hidden="true">
                         <span
                           className="block h-full rounded-full transition-[width,background-color,opacity]"
@@ -148,13 +157,20 @@ export default function LanguageBreakdown({
                           {languageRepos(d.name).slice(0, 4).map(({ repo, bytes }) => (
                             <div key={repo.fullName} className="min-w-0">
                               <div className="flex items-center justify-between gap-3">
-                                <span className="truncate">{repo.name}</span>
+                                <span className="flex min-w-0 items-center gap-1.5 truncate">
+                                  {(() => {
+                                    const LanguageIcon = LANGUAGE_ICONS[d.name] ?? Code2;
+                                    return <LanguageIcon className="h-3 w-3 shrink-0" style={{ color: languageColor(d.name) }} aria-hidden="true" />;
+                                  })()}
+                                  <span className="truncate">{repo.name}</span>
+                                </span>
                                 <span className="shrink-0 text-text-faint">
                                   {((bytes / d.value) * 100).toFixed(1)}%
                                 </span>
                               </div>
-                              <div className="text-[9px] text-text-faint">
-                                ~{Math.max(1, Math.round(bytes / 45)).toLocaleString()} lines · ~{Math.max(1, Math.round(bytes / 4000)).toLocaleString()} files
+                              <div className="flex items-center gap-2 text-[9px] text-text-faint">
+                                <span className="inline-flex items-center gap-1"><ListTree className="h-2.5 w-2.5" aria-hidden="true" />~{Math.max(1, Math.round(bytes / 45)).toLocaleString()} lines</span>
+                                <span className="inline-flex items-center gap-1"><Files className="h-2.5 w-2.5" aria-hidden="true" />~{Math.max(1, Math.round(bytes / 4000)).toLocaleString()} files</span>
                               </div>
                             </div>
                           ))}
