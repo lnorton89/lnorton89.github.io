@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Star, GitFork, ExternalLink } from "lucide-react";
+import { Star, GitFork, ExternalLink, Clock3, ArrowDownAZ } from "lucide-react";
 import { useLiveDataStore } from "@/store/live-data-store";
 import { languageColor, relativeTime, compactNumber } from "@/lib/format";
 import type { GithubSnapshot } from "@/lib/types";
@@ -16,6 +16,7 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
   const setSelectedLanguage = useLiveDataStore((s) => s.setSelectedLanguage);
   const repos = (live ?? base).topRepos;
   const [visibleCount, setVisibleCount] = useState(9);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<RepoSort>("updated");
   const [hoveredLanguage, setHoveredLanguage] = useState<{
@@ -38,6 +39,21 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
     });
   const visibleRepos = filteredRepos.slice(0, visibleCount);
 
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || visibleCount >= filteredRepos.length) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleCount((count) => Math.min(count + 9, filteredRepos.length));
+        }
+      },
+      { rootMargin: "240px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filteredRepos.length, visibleCount]);
+
   function showLanguageTooltip(
     key: string,
     label: string,
@@ -59,18 +75,30 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
           placeholder="filter repositories, topics..."
           className="min-w-0 rounded border border-hairline bg-surface-raised/60 px-2.5 py-1.5 font-mono text-[11px] text-text placeholder:text-text-faint focus:border-cyan/60 focus:outline-none"
         />
-        <label className="sr-only" htmlFor="repo-sort">Sort repositories</label>
-        <select
-          id="repo-sort"
-          value={sortBy}
-          onChange={(event) => setSortBy(event.target.value as RepoSort)}
-          className="rounded border border-hairline bg-surface-raised/60 px-2.5 py-1.5 font-mono text-[11px] text-text-muted focus:border-cyan/60 focus:outline-none"
-        >
-          <option value="updated">recently updated</option>
-          <option value="stars">most stars</option>
-          <option value="forks">most forks</option>
-          <option value="name">name A-Z</option>
-        </select>
+        <div className="flex items-center gap-1 rounded border border-hairline bg-surface-raised/60 p-1" aria-label="Sort repositories">
+          {([
+            ["updated", Clock3, "Recently updated"],
+            ["stars", Star, "Most stars"],
+            ["forks", GitFork, "Most forks"],
+            ["name", ArrowDownAZ, "Name A-Z"],
+          ] as const).map(([value, Icon, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setSortBy(value)}
+              aria-label={label}
+              aria-pressed={sortBy === value}
+              title={label}
+              className={`rounded p-1.5 transition-colors ${
+                sortBy === value
+                  ? "bg-cyan/15 text-cyan"
+                  : "text-text-faint hover:bg-surface-raised hover:text-text"
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          ))}
+        </div>
         {(selectedLanguage || search) && (
           <button
             type="button"
@@ -198,15 +226,7 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
       })}
       </div>
       {visibleCount < filteredRepos.length && (
-        <div className="mt-6 flex justify-center">
-          <button
-            type="button"
-            onClick={() => setVisibleCount((count) => count + 9)}
-            className="rounded-md border border-hairline bg-surface-raised px-4 py-2 font-mono text-xs text-text-muted transition-colors hover:border-cyan/60 hover:text-cyan focus-visible:border-cyan"
-          >
-            load more repositories ({filteredRepos.length - visibleCount} remaining)
-          </button>
-        </div>
+        <div ref={loadMoreRef} className="h-8" aria-hidden="true" />
       )}
       {hoveredLanguage &&
         typeof document !== "undefined" &&
