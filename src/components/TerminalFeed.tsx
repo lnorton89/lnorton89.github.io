@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Activity, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { useLiveDataStore } from "@/store/live-data-store";
 import { relativeTime } from "@/lib/format";
@@ -111,9 +111,16 @@ function Line({
   onToggle: () => void;
 }) {
   const typeLabel = TYPE_LABEL[item.type] ?? item.type.replace("Event", "").toLowerCase();
+  const rowRef = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    if (!expanded) return;
+    rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [expanded]);
 
   return (
     <motion.li
+      ref={rowRef}
       layout
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
