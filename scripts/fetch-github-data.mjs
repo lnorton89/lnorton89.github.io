@@ -81,12 +81,18 @@ async function main() {
 
   const profile = await rest(`/users/${USERNAME}`);
 
-  const repos = await rest(`/users/${USERNAME}/repos`, {
-    per_page: 100,
-    sort: "pushed",
-    direction: "desc",
-    type: "owner",
-  });
+  const repos = [];
+  for (let page = 1; ; page += 1) {
+    const batch = await rest(`/users/${USERNAME}/repos`, {
+      per_page: 100,
+      page,
+      sort: "pushed",
+      direction: "desc",
+      type: "owner",
+    });
+    repos.push(...batch);
+    if (batch.length < 100) break;
+  }
 
   const nonForkRepos = repos.filter((r) => !r.fork && !r.archived);
 

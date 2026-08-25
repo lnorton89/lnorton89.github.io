@@ -149,6 +149,11 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
           <p className="text-xs text-text-muted line-clamp-2 min-h-[32px]">
             {repo.description || "No description — open repository"}
           </p>
+          <div className="truncate font-mono text-[10px] text-text-faint">
+            {repo.visibility} · {repo.openIssues} open issues · since {new Date(repo.createdAt).getUTCFullYear()}
+          </div>
+          {repo.homepage && <div className="truncate font-mono text-[10px] text-cyan">{repo.homepage.replace(/^https?:\/\//, "")}</div>}
+          {!!repo.topics.length && <div className="truncate font-mono text-[10px] text-text-faint">#{repo.topics.join(" #")}</div>}
           <div className="flex items-center gap-3 text-[11px] font-mono text-text-faint mt-auto pt-2 border-t border-hairline/60">
             {repo.language && (
               <span className="flex items-center gap-1.5 text-text-muted">
@@ -221,15 +226,6 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
                 }}
               />
             ))}
-          </div>
-          <div className="pointer-events-none absolute left-3 right-3 top-full z-20 mt-2 hidden rounded-md border border-hairline bg-surface-raised px-3 py-2.5 font-mono text-[10px] text-text shadow-xl group-hover:block group-focus-visible:block">
-            <div className="mb-1.5 flex items-center justify-between gap-3 text-text-muted">
-              <span>{repo.visibility} repository</span>
-              <span>{repo.openIssues} open issues</span>
-            </div>
-            <div className="text-text-faint">created {new Date(repo.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short" })}</div>
-            {repo.homepage && <div className="mt-1 truncate text-cyan">{repo.homepage.replace(/^https?:\/\//, "")}</div>}
-            {!!repo.topics.length && <div className="mt-1.5 truncate text-text-faint">#{repo.topics.join(" #")}</div>}
           </div>
         </motion.a>
         );

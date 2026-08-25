@@ -44,6 +44,12 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
               <p className="mt-2 min-h-[32px] line-clamp-2 text-xs leading-relaxed text-text-muted">
                 {repo.description || "No description provided."}
               </p>
+              <div className="mt-2 truncate font-mono text-[10px] text-text-faint">
+                {repo.visibility ?? "public"} · {repo.openIssues ?? 0} open issues
+                {repo.createdAt && ` · since ${new Date(repo.createdAt).getUTCFullYear()}`}
+              </div>
+              {repo.homepage && <div className="truncate font-mono text-[10px] text-cyan">{repo.homepage.replace(/^https?:\/\//, "")}</div>}
+              {!!repo.topics?.length && <div className="truncate font-mono text-[10px] text-text-faint">#{repo.topics.join(" #")}</div>}
             </div>
             <div className="mt-auto flex items-center gap-3 border-t border-hairline/60 pt-2 font-mono text-[11px] text-text-faint">
               {repo.primaryLanguage && (
@@ -72,15 +78,6 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
                 className="h-full w-full"
                 style={{ background: repo.primaryLanguage?.color ?? "var(--hairline)" }}
               />
-            </div>
-            <div className="pointer-events-none absolute left-3 right-3 top-full z-20 mt-2 hidden rounded-md border border-hairline bg-surface-raised px-3 py-2.5 font-mono text-[10px] text-text shadow-xl group-hover:block group-focus-visible:block">
-              <div className="mb-1.5 flex items-center justify-between gap-3 text-text-muted">
-                <span>{repo.visibility ?? "public"} repository</span>
-                {repo.openIssues !== undefined && <span>{repo.openIssues} open issues</span>}
-              </div>
-              {repo.createdAt && <div className="text-text-faint">created {new Date(repo.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short" })}</div>}
-              {repo.homepage && <div className="mt-1 truncate text-cyan">{repo.homepage.replace(/^https?:\/\//, "")}</div>}
-              {!!repo.topics?.length && <div className="mt-1.5 truncate text-text-faint">#{repo.topics.join(" #")}</div>}
             </div>
           </motion.a>
         ))}
