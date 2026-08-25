@@ -142,7 +142,7 @@ async function main() {
   // Weekly commit counts for the last 52 weeks, derived from PushEvents (build-time
   // approximation — the events API only covers ~90 days; older weeks are backfilled
   // with 0 and the chart is framed as "recent" activity, not a full year).
-  const weeklyCommits = buildWeeklyCommits(events);
+  const weeklyCommits = await buildWeeklyCommits(USERNAME, nonForkRepos, events);
 
   const contribData = await graphql(
     `
@@ -285,24 +285,42 @@ async function summarizeEvent(e) {
   }
 }
 
-function buildWeeklyCommits(events) {
+async function buildWeeklyCommits(username, repos, events) {
   const now = new Date();
   const weeks = [];
   for (let i = 51; i >= 0; i--) {
     const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - i * 7);
+    weekStart.setUTCHours(0, 0, 0, 0);
+    weekStart.setUTCDate(weekStart.getUTCDate() - weekStart.getUTCDay() - i * 7);
     weeks.push({ weekStart: weekStart.toISOString().slice(0, 10), commits: 0 });
   }
-  const pushEvents = events.filter((e) => e.type === "PushEvent");
-  for (const e of pushEvents) {
-    const created = new Date(e.created_at);
-    const diffWeeks = Math.floor((now - created) / (7 * 24 * 60 * 60 * 1000));
-    const idx = 51 - diffWeeks;
-    if (idx >= 0 && idx < weeks.length) {
-      // Public events may omit the commits array; count the push itself rather
-      // than displaying a misleading all-zero velocity chart.
-      weeks[idx].commits += Math.max(1, e.payload.commits?.length ?? 0);
+
+  let statsSucceeded = false;
+  for (const repo of repos.slice(0, 20)) {
+    try {
+      const stats = await rest(`/repos/${username}/${repo.name}/stats/commit_activity`);
+      if (!Array.isArray(stats)) continue;
+      statsSucceeded = true;
+      for (const week of stats) {
+        const weekStart = new Date(week.week * 1000).toISOString().slice(0, 10);
+        const target = weeks.find((entry) => entry.weekStart === weekStart);
+        if (target) target.commits += week.total || 0;
+      }
+    } catch (err) {
+      console.warn(`commit activity fetch failed for ${repo.name}:`, err.message);
     }
+  }
+
+  if (statsSucceeded) return weeks;
+
+  // The events API is an intentionally rough fallback when commit statistics
+  // are still being computed or unavailable for the repository.
+  for (const event of events.filter((entry) => entry.type === "PushEvent")) {
+    const created = new Date(event.created_at);
+    created.setUTCHours(0, 0, 0, 0);
+    created.setUTCDate(created.getUTCDate() - created.getUTCDay());
+    const target = weeks.find((entry) => entry.weekStart === created.toISOString().slice(0, 10));
+    if (target) target.commits += Math.max(1, event.payload.commits?.length ?? 0);
   }
   return weeks;
 }

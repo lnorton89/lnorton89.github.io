@@ -14,8 +14,8 @@
   --cyan-dim: #1f6d6b;
   --danger: #e0645c;
 
-  --font-display: var(--font-space-grotesk);
-  --font-body: var(--font-inter);
+  --font-display: "Plus Jakarta Sans Variable";
+  --font-body: "Plus Jakarta Sans Variable";
   --font-mono: var(--font-jetbrains-mono);
 }
 

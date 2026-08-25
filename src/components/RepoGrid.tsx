@@ -12,6 +12,8 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
   const live = useLiveDataStore((s) => s.liveSnapshot);
   const selectedRepo = useLiveDataStore((s) => s.selectedRepo);
   const setSelectedRepo = useLiveDataStore((s) => s.setSelectedRepo);
+  const selectedLanguage = useLiveDataStore((s) => s.selectedLanguage);
+  const setSelectedLanguage = useLiveDataStore((s) => s.setSelectedLanguage);
   const repos = (live ?? base).topRepos;
   const [visibleCount, setVisibleCount] = useState(9);
   const [hoveredLanguage, setHoveredLanguage] = useState<{
@@ -20,7 +22,10 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
     x: number;
     y: number;
   } | null>(null);
-  const visibleRepos = repos.slice(0, visibleCount);
+  const filteredRepos = selectedLanguage
+    ? repos.filter((repo) => Object.keys(repo.languages ?? {}).includes(selectedLanguage))
+    : repos;
+  const visibleRepos = filteredRepos.slice(0, visibleCount);
 
   function showLanguageTooltip(
     key: string,
@@ -33,10 +38,26 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
 
   return (
     <div>
+      <div className="mb-3 flex items-center justify-between gap-3 font-mono text-[11px] text-text-faint" aria-live="polite">
+        <p>
+          showing {visibleRepos.length} of {filteredRepos.length} repositories
+          {selectedLanguage && <span className="text-cyan"> · filtered by {selectedLanguage}</span>}
+        </p>
+        {selectedLanguage && (
+          <button
+            type="button"
+            onClick={() => setSelectedLanguage(null)}
+            className="shrink-0 rounded border border-hairline px-2 py-1 text-text-muted transition-colors hover:border-cyan/50 hover:text-cyan"
+          >
+            clear filter
+          </button>
+        )}
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
       {visibleRepos.map((repo, i) => {
         const languages = Object.entries(repo.languages ?? {}).sort((a, b) => b[1] - a[1]);
         const languageTotal = languages.reduce((sum, [, bytes]) => sum + bytes, 0);
+        const hasSelectedLanguage = languages.some(([language]) => language === selectedLanguage);
 
         return (
         <motion.a
@@ -55,7 +76,9 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
           onBlur={() => setSelectedRepo(null)}
           className={`group rounded-lg border border-hairline bg-surface/80 backdrop-blur-sm p-4 pb-3 flex flex-col gap-3 transition-[border-color,opacity,transform,background-color] ${
             selectedRepo && selectedRepo !== repo.fullName ? "opacity-45" : ""
-          } ${selectedRepo === repo.fullName ? "border-cyan bg-cyan/5" : ""}`}
+          } ${selectedLanguage && !hasSelectedLanguage ? "opacity-45" : ""} ${
+            selectedRepo === repo.fullName ? "border-cyan bg-cyan/5" : ""
+          }`}
         >
           <div className="flex items-start justify-between gap-2">
             <h4 className="font-display text-[15px] font-semibold text-text truncate">
@@ -64,7 +87,7 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
             <ExternalLink className="h-3.5 w-3.5 text-text-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
           <p className="text-xs text-text-muted line-clamp-2 min-h-[32px]">
-            {repo.description || "No description provided."}
+            {repo.description || "No description — open repository"}
           </p>
           <div className="flex items-center gap-3 text-[11px] font-mono text-text-faint mt-auto pt-2 border-t border-hairline/60">
             {repo.language && (
@@ -101,6 +124,10 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
                     event.clientY
                   )
                 }
+                onClick={(event) => {
+                  event.preventDefault();
+                  setSelectedLanguage(selectedLanguage === language ? null : language);
+                }}
                 onPointerMove={(event) =>
                   showLanguageTooltip(
                     `${repo.fullName}:${language}`,
@@ -121,6 +148,8 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
                 }}
                 onBlur={() => setHoveredLanguage(null)}
                 className={`h-full transition-[opacity,transform] ${
+                  selectedLanguage && selectedLanguage !== language ? "opacity-35" : ""
+                } ${
                   hoveredLanguage && hoveredLanguage.key !== `${repo.fullName}:${language}`
                     && hoveredLanguage.key.startsWith(`${repo.fullName}:`)
                     ? "opacity-35"
@@ -137,14 +166,14 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
         );
       })}
       </div>
-      {visibleCount < repos.length && (
+      {visibleCount < filteredRepos.length && (
         <div className="mt-6 flex justify-center">
           <button
             type="button"
             onClick={() => setVisibleCount((count) => count + 9)}
             className="rounded-md border border-hairline bg-surface-raised px-4 py-2 font-mono text-xs text-text-muted transition-colors hover:border-cyan/60 hover:text-cyan focus-visible:border-cyan"
           >
-            load more repositories
+            load more repositories ({filteredRepos.length - visibleCount} remaining)
           </button>
         </div>
       )}

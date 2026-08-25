@@ -46,14 +46,24 @@ function groupByRepository(feed: FeedItem[]): GroupedFeedItem[] {
     grouped.set(item.repo, items);
   }
 
-  const perRepositoryLimit = grouped.size > 1 ? 3 : 14;
-  return Array.from(grouped.values()).flatMap((items) =>
-    items.slice(0, perRepositoryLimit).map((item, index) => ({
-      ...item,
-      activityCount: items.length,
-      isGroupStart: index === 0,
-    }))
-  );
+  const groups = Array.from(grouped.values());
+  const output: GroupedFeedItem[] = [];
+  for (let index = 0; output.length < 24; index += 1) {
+    let addedThisRound = false;
+    for (const items of groups) {
+      const item = items[index];
+      if (!item) continue;
+      output.push({
+        ...item,
+        activityCount: items.length,
+        isGroupStart: index === 0,
+      });
+      addedThisRound = true;
+      if (output.length === 24) break;
+    }
+    if (!addedThisRound) break;
+  }
+  return output;
 }
 
 function Line({
@@ -90,18 +100,18 @@ function Line({
         onBlur={() => setSelectedRepo(null)}
         aria-expanded={expanded}
         aria-controls={`activity-detail-${item.id}`}
-        className="flex w-full min-w-0 items-center gap-2.5 px-2 py-2 text-left"
+        className="grid w-full min-w-0 grid-cols-[auto_auto_1fr_auto] items-center gap-2.5 px-2 py-2 text-left sm:flex"
       >
         {expanded ? (
           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-cyan" aria-hidden="true" />
         ) : (
           <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint transition-colors group-hover:text-cyan" aria-hidden="true" />
         )}
-        <span className={`inline-flex w-[92px] shrink-0 items-center justify-center rounded-full border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide transition-all group-hover:brightness-125 ${TYPE_BADGE[item.type] ?? "border-hairline bg-surface-raised text-text-muted"}`}>
+        <span className={`inline-flex w-auto shrink-0 items-center justify-center rounded-full border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide transition-all group-hover:brightness-125 sm:w-[92px] ${TYPE_BADGE[item.type] ?? "border-hairline bg-surface-raised text-text-muted"}`}>
           {typeLabel}
         </span>
-        <span className="min-w-0 max-w-[24%] truncate text-text-muted transition-colors group-hover:text-text">{item.repo}</span>
-        <span className="min-w-0 truncate text-text">
+        <span className="col-start-2 min-w-0 max-w-full truncate text-text-muted transition-colors group-hover:text-text sm:max-w-[24%]">{item.repo}</span>
+        <span className="col-span-3 col-start-2 min-w-0 truncate text-text sm:col-auto">
           {item.summary}
           {item.detail && <span className="text-text-faint"> — {item.detail}</span>}
         </span>
@@ -154,7 +164,7 @@ function Line({
 export default function TerminalFeed({ base }: { base: GithubSnapshot }) {
   const live = useLiveDataStore((s) => s.liveSnapshot);
   const data = live ?? base;
-  const items = groupByRepository(data.feed).slice(0, 14);
+  const items = groupByRepository(data.feed).slice(0, 24);
   const repositoryCount = new Set(data.feed.map((item) => item.repo)).size;
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -180,11 +190,11 @@ export default function TerminalFeed({ base }: { base: GithubSnapshot }) {
         <span><span className="text-cyan">$</span> gh activity --user {data.profile.login}</span>
         <span className="tabular-nums">{repositoryCount} repos · {data.feed.length} events</span>
       </div>
-      <ul aria-label="Recent GitHub activity" className="max-h-[340px] overflow-y-auto px-2 py-1.5 scroll-thin">
+      <ul aria-label="Recent GitHub activity" className="max-h-[460px] overflow-y-auto px-2 py-1.5 scroll-thin">
         <AnimatePresence initial={false}>
           {items.length === 0 && (
             <li className="py-8 text-center font-mono text-sm text-text-faint">
-              no public activity in range
+              No public activity in range
             </li>
           )}
           {items.map((item, i) => (

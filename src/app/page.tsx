@@ -5,7 +5,7 @@ import ContributionHeatmap from "@/components/ContributionHeatmap";
 import LanguageBreakdown from "@/components/LanguageBreakdown";
 import CommitActivityChart from "@/components/CommitActivityChart";
 import RepoGrid from "@/components/RepoGrid";
-import { FolderGit2 } from "lucide-react";
+import { Activity, FolderGit2 } from "lucide-react";
 import type { GithubSnapshot } from "@/lib/types";
 
 function loadSnapshot(): GithubSnapshot | null {
@@ -38,20 +38,36 @@ export default function Home() {
         <Hero data={data} />
 
         <section className="pb-10">
-          <ContributionHeatmap
-            contributions={data.contributions}
-            weeklyFallback={data.weeklyCommits}
-          />
+          <div className="mb-4 flex items-end justify-between gap-4">
+            <div>
+              <h2 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide text-text">
+                <Activity className="h-4 w-4 text-amber" aria-hidden="true" />
+                Activity overview
+              </h2>
+              <p className="mt-1 font-mono text-[11px] text-text-faint">
+                contributions and commit velocity, side by side
+              </p>
+            </div>
+          </div>
+          <div className="rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm">
+            <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.85fr)]">
+            <ContributionHeatmap
+              contributions={data.contributions}
+              weeklyFallback={data.weeklyCommits}
+              embedded
+            />
+            <CommitActivityChart weekly={data.weeklyCommits} embedded />
+            </div>
+          </div>
         </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-4 pb-14">
+        <section className="pb-14">
           <LanguageBreakdown languageTotals={data.languageTotals} />
-          <CommitActivityChart weekly={data.weeklyCommits} />
         </section>
 
         <section className="pb-20">
           <div className="flex items-baseline justify-between mb-4">
-            <h2 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide uppercase text-text">
+            <h2 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide text-text">
               <FolderGit2 className="h-4 w-4 text-cyan" aria-hidden="true" />
               Recently active repositories
             </h2>

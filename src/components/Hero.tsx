@@ -22,10 +22,10 @@ const item: Variants = {
 export default function Hero({ data }: { data: GithubSnapshot }) {
   const { profile, contributions } = data;
   const stats = [
-    { label: "public repos", value: profile.publicRepos, icon: FolderGit2 },
-    { label: "followers", value: profile.followers, icon: Users },
+    { label: "Public repositories", value: profile.publicRepos, icon: FolderGit2 },
+    { label: "Followers", value: profile.followers, icon: Users },
     ...(contributions
-      ? [{ label: "contributions / yr", value: contributions.contributionCalendar.totalContributions, icon: Activity }]
+      ? [{ label: "Contributions / year", value: contributions.contributionCalendar.totalContributions, icon: Activity }]
       : []),
   ];
 
@@ -53,7 +53,7 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan" />
           </span>
           <span className="font-mono text-[11px] text-cyan/80 uppercase tracking-wide">
-            building now
+            Building now
           </span>
         </motion.div>
 
@@ -96,12 +96,12 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
         </div>
 
         <div className="flex min-w-0 flex-col gap-7 lg:pb-1">
-          <motion.div variants={item} className="grid grid-cols-3 gap-4 border-y border-hairline/70 py-4">
+          <motion.div variants={item} className="grid grid-cols-2 gap-x-4 gap-y-4 border-y border-hairline/70 py-4 sm:grid-cols-3">
             {stats.map((s) => (
               <div key={s.label} className="min-w-0">
                 <div className="mb-1 flex items-center gap-2 text-text-faint">
                   <s.icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  <span className="truncate font-mono text-[11px] uppercase tracking-wide">{s.label}</span>
+                  <span className="truncate font-mono text-[11px] tracking-wide">{s.label}</span>
                 </div>
                 <div className="font-display text-3xl font-semibold text-text tabular-nums">
                   {compactNumber(s.value)}

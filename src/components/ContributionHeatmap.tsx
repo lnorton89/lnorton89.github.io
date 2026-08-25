@@ -29,9 +29,11 @@ const CELL_STYLES = [
 export default function ContributionHeatmap({
   contributions,
   weeklyFallback,
+  embedded = false,
 }: {
   contributions: ContributionsCollection | null;
   weeklyFallback: WeeklyCommits[];
+  embedded?: boolean;
 }) {
   const [hovered, setHovered] = useState<{ label: string; x: number; y: number } | null>(null);
 
@@ -78,15 +80,15 @@ export default function ContributionHeatmap({
   const total = contributions?.contributionCalendar.totalContributions;
 
   return (
-    <div className="min-w-0 rounded-lg border border-hairline bg-surface/80 backdrop-blur-sm p-5">
+    <div className={`min-w-0 ${embedded ? "" : "rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm"}`}>
       <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
-        <h3 className="font-display text-sm font-semibold tracking-wide text-text uppercase">
+        <h3 className="font-display text-sm font-semibold tracking-wide text-text">
           Contribution pulse
         </h3>
         <span className="font-mono text-xs text-text-muted">
           {total !== undefined
             ? `${total.toLocaleString()} contributions, last 12 months`
-            : "approximate — recent public push activity"}
+            : "Approximate — recent public push activity"}
         </span>
       </div>
       <div
@@ -111,12 +113,15 @@ export default function ContributionHeatmap({
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ duration: 0.25, delay: (ci * col.length + ri) * 0.002 }}
-                className={`aspect-square w-full cursor-help rounded-[2px] transition-[filter,box-shadow] hover:brightness-125 hover:ring-1 hover:ring-cyan/70 focus-visible:ring-1 focus-visible:ring-cyan ${CELL_STYLES[intensity(cell.count, grid.max)]}`}
+                className={`aspect-square w-full cursor-pointer rounded-[2px] transition-[filter,box-shadow] hover:brightness-125 hover:ring-1 hover:ring-cyan/70 focus-visible:ring-1 focus-visible:ring-cyan ${CELL_STYLES[intensity(cell.count, grid.max)]}`}
               />
             ))}
           </div>
         ))}
       </div>
+      <p className="mt-2 text-right font-mono text-[11px] text-text-faint sm:hidden">
+        scroll horizontally to explore
+      </p>
       {hovered &&
         typeof document !== "undefined" &&
         createPortal(

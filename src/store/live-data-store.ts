@@ -5,8 +5,10 @@ interface LiveDataState {
   liveSnapshot: GithubSnapshot | null;
   lastSyncedAt: string | null;
   selectedRepo: string | null;
+  selectedLanguage: string | null;
   setLiveSnapshot: (snapshot: GithubSnapshot) => void;
   setSelectedRepo: (repo: string | null) => void;
+  setSelectedLanguage: (language: string | null) => void;
 }
 
 // Holds a client-refreshed snapshot fetched directly from the GitHub REST API.
@@ -16,7 +18,9 @@ export const useLiveDataStore = create<LiveDataState>((set) => ({
   liveSnapshot: null,
   lastSyncedAt: null,
   selectedRepo: null,
+  selectedLanguage: null,
   setLiveSnapshot: (snapshot) =>
     set({ liveSnapshot: snapshot, lastSyncedAt: new Date().toISOString() }),
   setSelectedRepo: (repo) => set({ selectedRepo: repo }),
+  setSelectedLanguage: (language) => set({ selectedLanguage: language }),
 }));
