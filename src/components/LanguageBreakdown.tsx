@@ -146,7 +146,7 @@ export default function LanguageBreakdown({
                     {hoveredLanguage === d.name && (
                       <div
                         role="tooltip"
-                        className="pointer-events-none absolute right-0 top-full z-20 mt-1 w-64 rounded-md border border-hairline bg-surface-raised px-3 py-2.5 font-mono text-[10px] text-text shadow-xl"
+                        className="pointer-events-auto absolute right-0 top-full z-20 mt-1 max-h-[min(60vh,24rem)] w-64 overflow-y-auto rounded-md border border-hairline bg-surface-raised px-3 py-2.5 font-mono text-[10px] text-text shadow-xl"
                       >
                         <div className="mb-1.5 flex items-center justify-between gap-3 text-text-muted">
                           <span>{languageRepos(d.name).length} repositories</span>
@@ -154,7 +154,7 @@ export default function LanguageBreakdown({
                         </div>
                         <div className="mb-1.5 text-[9px] text-text-faint">estimated lines and files from byte totals</div>
                         <div className="space-y-1">
-                          {languageRepos(d.name).slice(0, 4).map(({ repo, bytes }) => (
+                          {languageRepos(d.name).map(({ repo, bytes }) => (
                             <div key={repo.fullName} className="min-w-0">
                               <div className="flex items-center justify-between gap-3">
                                 <span className="flex min-w-0 items-center gap-1.5 truncate">
