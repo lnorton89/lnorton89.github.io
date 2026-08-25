@@ -79,9 +79,9 @@ export default function LanguageBreakdown({
                         fontSize: 12,
                         fontFamily: "var(--font-mono)",
                       }}
-                      formatter={(value, name, item) => [
-                        `${Number(item.payload.pct).toFixed(1)}%`,
-                        String(name),
+                      formatter={(_value, _name, item) => [
+                        `${item.payload.pct}%`,
+                        item.payload.name,
                       ]}
                     />
                     <Bar dataKey="pctValue" radius={[0, 4, 4, 0]} barSize={10} cursor="pointer">
