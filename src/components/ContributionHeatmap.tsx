@@ -82,7 +82,7 @@ export default function ContributionHeatmap({
   const total = grid.columns.reduce((sum, column) => sum + column.reduce((columnTotal, cell) => columnTotal + cell.count, 0), 0);
 
   return (
-    <div className={`min-w-0 ${embedded ? "" : "rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm"}`}>
+    <div className={`flex h-full min-w-0 flex-col ${embedded ? "" : "rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm"}`}>
       <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
         <h3 className="font-display text-sm font-semibold tracking-wide text-text">
           Contribution pulse
@@ -125,10 +125,16 @@ export default function ContributionHeatmap({
                 onPointerLeave={() => setHovered(null)}
                 onFocus={(event) => showTooltipForFocus(event.currentTarget, cell.label)}
                 onBlur={() => setHovered(null)}
-                initial={{ opacity: 0, scale: 0.4 }}
-                whileInView={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, scale: 0, y: 5, rotate: -10 }}
+                whileInView={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
                 viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.25, delay: (ci * col.length + ri) * 0.002 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 420,
+                  damping: 24,
+                  mass: 0.55,
+                  delay: (ci * col.length + ri) * 0.006,
+                }}
                 className={`aspect-square w-full cursor-pointer rounded-[2px] transition-[filter,box-shadow] hover:brightness-125 hover:ring-1 hover:ring-cyan/70 focus-visible:ring-1 focus-visible:ring-cyan ${CELL_STYLES[intensity(cell.count, grid.max)]}`}
               />
             ))}
@@ -150,7 +156,7 @@ export default function ContributionHeatmap({
           </div>,
           document.body
         )}
-      <div className="mt-3 flex items-center justify-between gap-3">
+      <div className="mt-auto flex items-center justify-between gap-3 pt-3">
         <span className="font-mono text-xs text-text-muted">
           {contributions ? `${total.toLocaleString()} contributions` : "Approximate public push activity"}
         </span>
