@@ -56,6 +56,7 @@ export default function LanguageBreakdown({
     value: bytes,
     pct: total > 0 ? ((bytes / total) * 100).toFixed(1) : "0",
     pctValue: total > 0 ? (bytes / total) * 100 : 0,
+    chartValue: total > 0 ? Math.max((bytes / total) * 100, 0.35) : 0,
   }));
 
   return (
@@ -120,7 +121,7 @@ export default function LanguageBreakdown({
                       ]}
                     />
                     <Bar
-                      dataKey="pctValue"
+                      dataKey="chartValue"
                       radius={[0, 4, 4, 0]}
                       barSize={10}
                       cursor="pointer"
