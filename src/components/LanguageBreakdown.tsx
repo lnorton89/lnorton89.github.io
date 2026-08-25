@@ -51,6 +51,15 @@ export default function LanguageBreakdown({
   const selectedLanguage = useLiveDataStore((s) => s.selectedLanguage);
   const setSelectedLanguage = useLiveDataStore((s) => s.setSelectedLanguage);
   const [hoveredLanguage, setHoveredLanguage] = useState<{ name: string; x: number; y: number } | null>(null);
+  const positionTooltip = (name: string, x: number, y: number) => {
+    const width = 288;
+    const height = 220;
+    setHoveredLanguage({
+      name,
+      x: Math.max(12, Math.min(x + 14, window.innerWidth - width - 12)),
+      y: Math.max(12, Math.min(y + 14, window.innerHeight - height - 12)),
+    });
+  };
   const allEntries = Object.entries(languageTotals)
     .sort((a, b) => b[1] - a[1])
   const entries = allEntries;
@@ -111,12 +120,12 @@ export default function LanguageBreakdown({
                     whileInView={{ opacity: 1 }}
                     viewport={{ once: true, margin: "-40px" }}
                     transition={{ duration: 0.3, delay: index * 0.04 }}
-                    onMouseEnter={(event) => setHoveredLanguage({ name: d.name, x: event.clientX + 14, y: event.clientY + 14 })}
-                    onMouseMove={(event) => setHoveredLanguage({ name: d.name, x: event.clientX + 14, y: event.clientY + 14 })}
+                    onMouseEnter={(event) => positionTooltip(d.name, event.clientX, event.clientY)}
+                    onMouseMove={(event) => positionTooltip(d.name, event.clientX, event.clientY)}
                     onMouseLeave={() => setHoveredLanguage(null)}
                     onFocus={(event) => {
                       const rect = event.currentTarget.getBoundingClientRect();
-                      setHoveredLanguage({ name: d.name, x: rect.right + 14, y: rect.top + 14 });
+                      positionTooltip(d.name, rect.right, rect.top);
                     }}
                     onBlur={() => setHoveredLanguage(null)}
                     className="relative"
