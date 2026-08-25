@@ -56,10 +56,10 @@ function groupByRepository(feed: FeedItem[]): GroupedFeedItem[] {
       : activities.length;
     return {
       ...first,
-      id: activities.map((activity) => activity.id).join("-"),
+      id: `${first.repo}-${first.type}`,
       createdAt: first.createdAt,
       summary: groupedSummary(first, activityCount),
-      detail: first.detail,
+      detail: activities.length === 1 ? first.detail : undefined,
       url: first.url,
       activityCount,
       activities,
@@ -119,8 +119,8 @@ function Line({
         <span className={`inline-flex w-auto shrink-0 items-center justify-center rounded-full border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide transition-all group-hover:brightness-125 sm:w-[92px] ${TYPE_BADGE[item.type] ?? "border-hairline bg-surface-raised text-text-muted"}`}>
           {typeLabel}
         </span>
-        <span className="col-start-2 min-w-0 max-w-full truncate text-text-muted transition-colors group-hover:text-text sm:max-w-[24%]">{item.repo}</span>
-        <span className="col-span-3 col-start-2 min-w-0 truncate text-text sm:col-auto">
+        <span className="col-start-2 min-w-0 max-w-full truncate text-text-muted transition-colors group-hover:text-text sm:w-[24%] sm:shrink-0">{item.repo}</span>
+        <span className="col-span-3 col-start-2 min-w-0 truncate text-text sm:col-auto sm:flex-1">
           {item.summary}
           {item.type === "PushEvent" && item.commits.length > 0 ? (
             <span className="text-text-faint"> — {item.commits.map((commit) => commit.sha.slice(0, 7)).join(", ")}</span>
@@ -160,13 +160,22 @@ function Line({
                     </p>
                   ))}
                 </div>
+              ) : item.activities.length > 1 ? (
+                <div className="mb-2 space-y-1.5">
+                  {item.activities.map((activity) => (
+                    <p key={activity.id} className="text-sm leading-relaxed text-text">
+                      <span className="mr-2 text-text-faint">{relativeTime(activity.createdAt)}</span>
+                      {activity.detail || activity.summary}
+                    </p>
+                  ))}
+                </div>
               ) : (
                 <p className="mb-2 text-sm leading-relaxed text-text">{item.detail || item.summary}</p>
               )}
               <div className="grid gap-1.5 border-t border-hairline/60 pt-2 text-text-faint sm:grid-cols-2">
                 <span>type: <span className="text-text-muted">{typeLabel}</span></span>
                 <span>grouped activities: <span className="text-text-muted">{item.activities.length}</span></span>
-                <span className="truncate">event id: <span className="text-text-muted">{item.id}</span></span>
+                <span className="truncate">latest event: <span className="text-text-muted">{item.activities[0].id}</span></span>
                 <a
                   href={item.url ?? `https://github.com/${item.repo}`}
                   target="_blank"
