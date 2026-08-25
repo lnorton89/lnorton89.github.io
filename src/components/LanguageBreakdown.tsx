@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Code2, Files, ListTree } from "lucide-react";
 import type { IconType } from "react-icons";
 import {
@@ -72,6 +73,7 @@ export default function LanguageBreakdown({
     chartValue: total > 0 ? Math.max((bytes / total) * 100, 0.35) : 0,
     filesEstimate: Math.max(1, Math.round(bytes / 4000)),
   }));
+  const hoveredData = hoveredLanguage ? data.find((d) => d.name === hoveredLanguage.name) : null;
   const languageRepos = (language: string) =>
     repos
       .map((repo) => ({ repo, bytes: repo.languages?.[language] ?? 0 }))
@@ -156,44 +158,44 @@ export default function LanguageBreakdown({
                         />
                       </span>
                     </button>
-                    {hoveredLanguage?.name === d.name && (
-                      <div
-                        role="tooltip"
-                        className="pointer-events-none fixed z-50 w-72 rounded-md border border-hairline bg-surface-raised px-3 py-2.5 font-mono text-[10px] text-text shadow-xl"
-                        style={{ left: hoveredLanguage.x, top: hoveredLanguage.y }}
-                      >
-                        <div className="mb-1.5 flex items-center justify-between gap-3 text-text-muted">
-                          <span>{languageRepos(d.name).length} repositories</span>
-                          <span>{d.value.toLocaleString()} bytes</span>
-                        </div>
-                        <div className="mb-1.5 text-[9px] text-text-faint">estimated lines and files from byte totals</div>
-                        <div className="space-y-1">
-                          {languageRepos(d.name).map(({ repo, bytes }) => (
-                            <div key={repo.fullName} className="min-w-0">
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="flex min-w-0 items-center gap-1.5 truncate">
-                                  {(() => {
-                                    const LanguageIcon = LANGUAGE_ICONS[d.name] ?? Code2;
-                                    return <LanguageIcon className="h-3 w-3 shrink-0" style={{ color: languageColor(d.name) }} aria-hidden="true" />;
-                                  })()}
-                                  <span className="truncate">{repo.name}</span>
-                                </span>
-                                <span className="shrink-0 text-text-faint">
-                                  {((bytes / d.value) * 100).toFixed(1)}%
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 text-[9px] text-text-faint">
-                                <span className="inline-flex items-center gap-1"><ListTree className="h-2.5 w-2.5" aria-hidden="true" />~{Math.max(1, Math.round(bytes / 45)).toLocaleString()} lines</span>
-                                <span className="inline-flex items-center gap-1"><Files className="h-2.5 w-2.5" aria-hidden="true" />~{Math.max(1, Math.round(bytes / 4000)).toLocaleString()} files</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </motion.li>
                 ))}
             </ul>
+            {hoveredLanguage && hoveredData && typeof document !== "undefined" &&
+              createPortal(
+                <div
+                  role="tooltip"
+                  className="pointer-events-none fixed z-50 w-72 rounded-md border border-hairline bg-surface-raised px-3 py-2.5 font-mono text-[10px] text-text shadow-xl"
+                  style={{ left: hoveredLanguage.x, top: hoveredLanguage.y }}
+                >
+                  <div className="mb-1.5 flex items-center justify-between gap-3 text-text-muted">
+                    <span>{languageRepos(hoveredData.name).length} repositories</span>
+                    <span>{hoveredData.value.toLocaleString()} bytes</span>
+                  </div>
+                  <div className="mb-1.5 text-[9px] text-text-faint">estimated lines and files from byte totals</div>
+                  <div className="space-y-1">
+                    {languageRepos(hoveredData.name).map(({ repo, bytes }) => (
+                      <div key={repo.fullName} className="min-w-0">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="flex min-w-0 items-center gap-1.5 truncate">
+                            {(() => {
+                              const LanguageIcon = LANGUAGE_ICONS[hoveredData.name] ?? Code2;
+                              return <LanguageIcon className="h-3 w-3 shrink-0" style={{ color: languageColor(hoveredData.name) }} aria-hidden="true" />;
+                            })()}
+                            <span className="truncate">{repo.name}</span>
+                          </span>
+                          <span className="shrink-0 text-text-faint">{((bytes / hoveredData.value) * 100).toFixed(1)}%</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[9px] text-text-faint">
+                          <span className="inline-flex items-center gap-1"><ListTree className="h-2.5 w-2.5" aria-hidden="true" />~{Math.max(1, Math.round(bytes / 45)).toLocaleString()} lines</span>
+                          <span className="inline-flex items-center gap-1"><Files className="h-2.5 w-2.5" aria-hidden="true" />~{Math.max(1, Math.round(bytes / 4000)).toLocaleString()} files</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>,
+                document.body
+              )}
             <p className="mt-4 border-t border-hairline/60 pt-3 font-mono text-[11px] text-text-faint">
               showing {entries.length} of {allEntries.length} languages · {total.toLocaleString()} bytes represented
             </p>
