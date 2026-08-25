@@ -34,7 +34,11 @@ export default function ContributionHeatmap({
 }) {
   const [hovered, setHovered] = useState<{ label: string; x: number; y: number } | null>(null);
 
-  function showTooltip(element: HTMLElement, label: string) {
+  function showTooltipAt(x: number, y: number, label: string) {
+    setHovered({ label, x: x + 12, y: y - 12 });
+  }
+
+  function showTooltipForFocus(element: HTMLElement, label: string) {
     const rect = element.getBoundingClientRect();
     setHovered({ label, x: rect.left + rect.width / 2, y: rect.top });
   }
@@ -93,9 +97,10 @@ export default function ContributionHeatmap({
                 role="gridcell"
                 tabIndex={0}
                 aria-label={cell.label}
-                onPointerEnter={(event) => showTooltip(event.currentTarget, cell.label)}
+                onPointerEnter={(event) => showTooltipAt(event.clientX, event.clientY, cell.label)}
+                onPointerMove={(event) => showTooltipAt(event.clientX, event.clientY, cell.label)}
                 onPointerLeave={() => setHovered(null)}
-                onFocus={(event) => showTooltip(event.currentTarget, cell.label)}
+                onFocus={(event) => showTooltipForFocus(event.currentTarget, cell.label)}
                 onBlur={() => setHovered(null)}
                 initial={{ opacity: 0, scale: 0.4 }}
                 whileInView={{ opacity: 1, scale: 1 }}
@@ -110,7 +115,7 @@ export default function ContributionHeatmap({
       {hovered && (
         <div
           role="tooltip"
-          className="pointer-events-none fixed z-50 max-w-[220px] -translate-x-1/2 -translate-y-[calc(100%+8px)] rounded-md border border-hairline bg-surface-raised px-2.5 py-1.5 text-center font-mono text-[11px] text-text shadow-lg"
+          className="pointer-events-none fixed z-50 max-w-[220px] -translate-y-full rounded-md border border-hairline bg-surface-raised px-2.5 py-1.5 text-center font-mono text-[11px] text-text shadow-lg"
           style={{ left: hovered.x, top: hovered.y }}
         >
           {hovered.label}
