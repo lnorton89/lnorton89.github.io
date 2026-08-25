@@ -50,7 +50,7 @@ export default function LanguageBreakdown({
 }) {
   const selectedLanguage = useLiveDataStore((s) => s.selectedLanguage);
   const setSelectedLanguage = useLiveDataStore((s) => s.setSelectedLanguage);
-  const [hoveredLanguage, setHoveredLanguage] = useState<string | null>(null);
+  const [hoveredLanguage, setHoveredLanguage] = useState<{ name: string; x: number; y: number } | null>(null);
   const allEntries = Object.entries(languageTotals)
     .sort((a, b) => b[1] - a[1])
   const entries = allEntries;
@@ -111,9 +111,13 @@ export default function LanguageBreakdown({
                     whileInView={{ opacity: 1 }}
                     viewport={{ once: true, margin: "-40px" }}
                     transition={{ duration: 0.3, delay: index * 0.04 }}
-                    onMouseEnter={() => setHoveredLanguage(d.name)}
+                    onMouseEnter={(event) => setHoveredLanguage({ name: d.name, x: event.clientX + 14, y: event.clientY + 14 })}
+                    onMouseMove={(event) => setHoveredLanguage({ name: d.name, x: event.clientX + 14, y: event.clientY + 14 })}
                     onMouseLeave={() => setHoveredLanguage(null)}
-                    onFocus={() => setHoveredLanguage(d.name)}
+                    onFocus={(event) => {
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      setHoveredLanguage({ name: d.name, x: rect.right + 14, y: rect.top + 14 });
+                    }}
                     onBlur={() => setHoveredLanguage(null)}
                     className="relative"
                   >
@@ -143,10 +147,11 @@ export default function LanguageBreakdown({
                         />
                       </span>
                     </button>
-                    {hoveredLanguage === d.name && (
+                    {hoveredLanguage?.name === d.name && (
                       <div
                         role="tooltip"
-                        className="pointer-events-auto absolute right-0 top-full z-20 mt-1 max-h-[min(60vh,24rem)] w-64 overflow-y-auto rounded-md border border-hairline bg-surface-raised px-3 py-2.5 font-mono text-[10px] text-text shadow-xl"
+                        className="pointer-events-none fixed z-50 w-72 rounded-md border border-hairline bg-surface-raised px-3 py-2.5 font-mono text-[10px] text-text shadow-xl"
+                        style={{ left: hoveredLanguage.x, top: hoveredLanguage.y }}
                       >
                         <div className="mb-1.5 flex items-center justify-between gap-3 text-text-muted">
                           <span>{languageRepos(d.name).length} repositories</span>
