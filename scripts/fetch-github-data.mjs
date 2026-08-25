@@ -347,6 +347,13 @@ async function summarizeEvent(e) {
         detail: e.payload.issue?.title,
         url: e.payload.issue?.html_url,
       };
+    case "IssueCommentEvent":
+      return {
+        ...base,
+        summary: "commented on an issue",
+        detail: e.payload.issue?.title || "issue comment",
+        url: e.payload.issue?.html_url,
+      };
     case "CreateEvent":
       return {
         ...base,

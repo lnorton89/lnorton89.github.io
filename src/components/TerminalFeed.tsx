@@ -11,6 +11,7 @@ const TYPE_LABEL: Record<string, string> = {
   PushEvent: "push",
   PullRequestEvent: "pull request",
   IssuesEvent: "issue",
+  IssueCommentEvent: "comment",
   CreateEvent: "create",
   ReleaseEvent: "release",
   WatchEvent: "star",

@@ -159,6 +159,8 @@ function summarize(e: { type: string; payload: Record<string, unknown> }): strin
       return `${e.payload.action} a pull request`;
     case "IssuesEvent":
       return `${e.payload.action} an issue`;
+    case "IssueCommentEvent":
+      return "commented on an issue";
     case "CreateEvent":
       return `created ${e.payload.ref_type}`;
     case "ReleaseEvent":
@@ -194,6 +196,8 @@ async function detail(e: { type: string; repo?: { name: string }; payload: Recor
     }
     case "IssuesEvent":
       return ((payload.issue as { title?: string } | undefined)?.title) ?? "issue activity";
+    case "IssueCommentEvent":
+      return ((payload.issue as { title?: string } | undefined)?.title) ?? "issue comment";
     case "CreateEvent":
       return String(payload.ref ?? payload.ref_type ?? "new repository activity");
     case "ReleaseEvent":
@@ -218,6 +222,9 @@ function eventUrl(e: { type: string; repo?: { name: string }; payload: Record<st
         : undefined);
   }
   if (e.type === "IssuesEvent") {
+    return (payload.issue as { html_url?: string } | undefined)?.html_url;
+  }
+  if (e.type === "IssueCommentEvent") {
     return (payload.issue as { html_url?: string } | undefined)?.html_url;
   }
   if (e.type === "ReleaseEvent") {
