@@ -37,6 +37,11 @@ export interface PinnedRepo {
   stargazerCount: number;
   forkCount: number;
   primaryLanguage: { name: string; color: string } | null;
+  homepage?: string | null;
+  visibility?: string;
+  openIssues?: number;
+  createdAt?: string;
+  topics?: string[];
 }
 
 export interface FeedItem {

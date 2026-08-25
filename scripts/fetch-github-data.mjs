@@ -171,9 +171,22 @@ async function main() {
                 url
                 stargazerCount
                 forkCount
+                homepageUrl
+                visibility
+                createdAt
+                issues {
+                  totalCount
+                }
                 primaryLanguage {
                   name
                   color
+                }
+                repositoryTopics(first: 8) {
+                  nodes {
+                    topic {
+                      name
+                    }
+                  }
                 }
               }
             }
@@ -202,7 +215,19 @@ async function main() {
     },
     languageTotals,
     topRepos,
-    pinnedRepos: contribData?.user?.pinnedItems?.nodes ?? null,
+    pinnedRepos: contribData?.user?.pinnedItems?.nodes?.map((repo) => ({
+      name: repo.name,
+      description: repo.description,
+      url: repo.url,
+      stargazerCount: repo.stargazerCount,
+      forkCount: repo.forkCount,
+      primaryLanguage: repo.primaryLanguage,
+      homepage: repo.homepageUrl,
+      visibility: repo.visibility?.toLowerCase(),
+      openIssues: repo.issues?.totalCount ?? 0,
+      createdAt: repo.createdAt,
+      topics: repo.repositoryTopics?.nodes?.map(({ topic }) => topic.name) ?? [],
+    })) ?? null,
     feed,
     weeklyCommits,
     contributions: contribData?.user?.contributionsCollection ?? null,

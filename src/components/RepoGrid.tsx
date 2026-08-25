@@ -136,7 +136,7 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
           transition={{ duration: 0.35, delay: i * 0.05 }}
           whileHover={{ y: -3, borderColor: "var(--cyan)" }}
           whileTap={{ scale: 0.985 }}
-          className={`group rounded-lg border border-hairline bg-surface/80 backdrop-blur-sm p-4 pb-3 flex flex-col gap-3 transition-[border-color,opacity,transform,background-color] ${
+          className={`group relative rounded-lg border border-hairline bg-surface/80 backdrop-blur-sm p-4 pb-3 flex flex-col gap-3 transition-[border-color,opacity,transform,background-color] ${
             selectedLanguage && !hasSelectedLanguage ? "opacity-45" : ""
           }`}
         >
@@ -221,6 +221,15 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
                 }}
               />
             ))}
+          </div>
+          <div className="pointer-events-none absolute left-3 right-3 top-full z-20 mt-2 hidden rounded-md border border-hairline bg-surface-raised px-3 py-2.5 font-mono text-[10px] text-text shadow-xl group-hover:block group-focus-visible:block">
+            <div className="mb-1.5 flex items-center justify-between gap-3 text-text-muted">
+              <span>{repo.visibility} repository</span>
+              <span>{repo.openIssues} open issues</span>
+            </div>
+            <div className="text-text-faint">created {new Date(repo.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short" })}</div>
+            {repo.homepage && <div className="mt-1 truncate text-cyan">{repo.homepage.replace(/^https?:\/\//, "")}</div>}
+            {!!repo.topics.length && <div className="mt-1.5 truncate text-text-faint">#{repo.topics.join(" #")}</div>}
           </div>
         </motion.a>
         );

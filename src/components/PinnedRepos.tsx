@@ -32,7 +32,7 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
             transition={{ duration: 0.35, delay: index * 0.05 }}
             whileHover={{ y: -3, borderColor: "var(--cyan)" }}
             whileTap={{ scale: 0.985 }}
-            className="group flex flex-col gap-3 rounded-lg border border-hairline bg-surface/80 p-4 pb-3 backdrop-blur-sm transition-[border-color,opacity,transform,background-color] hover:bg-surface-raised/60"
+            className="group relative flex flex-col gap-3 rounded-lg border border-hairline bg-surface/80 p-4 pb-3 backdrop-blur-sm transition-[border-color,opacity,transform,background-color] hover:bg-surface-raised/60"
           >
             <div>
               <div className="flex items-start justify-between gap-3">
@@ -72,6 +72,15 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
                 className="h-full w-full"
                 style={{ background: repo.primaryLanguage?.color ?? "var(--hairline)" }}
               />
+            </div>
+            <div className="pointer-events-none absolute left-3 right-3 top-full z-20 mt-2 hidden rounded-md border border-hairline bg-surface-raised px-3 py-2.5 font-mono text-[10px] text-text shadow-xl group-hover:block group-focus-visible:block">
+              <div className="mb-1.5 flex items-center justify-between gap-3 text-text-muted">
+                <span>{repo.visibility ?? "public"} repository</span>
+                {repo.openIssues !== undefined && <span>{repo.openIssues} open issues</span>}
+              </div>
+              {repo.createdAt && <div className="text-text-faint">created {new Date(repo.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short" })}</div>}
+              {repo.homepage && <div className="mt-1 truncate text-cyan">{repo.homepage.replace(/^https?:\/\//, "")}</div>}
+              {!!repo.topics?.length && <div className="mt-1.5 truncate text-text-faint">#{repo.topics.join(" #")}</div>}
             </div>
           </motion.a>
         ))}
