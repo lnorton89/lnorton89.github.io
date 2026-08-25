@@ -83,6 +83,29 @@ function groupedSummary(item: FeedItem, count: number): string {
   return `${action} ${count} ${noun[item.type] ?? "events"}`;
 }
 
+function DetailEntry({
+  href,
+  prefix,
+  children,
+}: {
+  href: string;
+  prefix: string;
+  children: string;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex items-start gap-2 rounded border border-hairline/60 bg-surface-raised/30 px-2 py-1.5 text-[11px] leading-relaxed text-text transition-colors hover:border-cyan/50 hover:bg-cyan/10 hover:text-cyan focus-visible:border-cyan/50 focus-visible:bg-cyan/10 focus-visible:text-cyan"
+    >
+      <span className="shrink-0 text-cyan">{prefix}</span>
+      <span className="min-w-0 flex-1">{children}</span>
+      <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-text-faint transition-colors group-hover:text-cyan" aria-hidden="true" />
+    </a>
+  );
+}
+
 function Line({
   item,
   index,
@@ -151,39 +174,27 @@ function Line({
                 <span className="uppercase tracking-wide text-cyan">event detail</span>
                 <span className="whitespace-nowrap">{new Date(item.createdAt).toUTCString()}</span>
               </div>
-              {item.type === "PushEvent" && item.commits.length > 0 ? (
-                <div className="mb-2 space-y-1.5">
-                  {item.commits.map((commit) => (
-                    <a
-                      key={commit.sha}
-                      href={commit.url ?? item.url ?? `https://github.com/${item.repo}/commit/${commit.sha}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block rounded px-1 py-0.5 text-[11px] leading-relaxed text-text transition-colors hover:bg-cyan/10 hover:text-cyan focus-visible:bg-cyan/10 focus-visible:text-cyan"
-                    >
-                      <span className="mr-2 text-cyan">{commit.sha.slice(0, 7)}</span>
-                      {commit.message}
-                    </a>
-                  ))}
-                </div>
-              ) : item.activities.length > 1 ? (
-                <div className="mb-2 space-y-1.5">
-                  {item.activities.map((activity) => (
-                    <a
-                      key={activity.id}
-                      href={activity.url ?? `https://github.com/${activity.repo}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block rounded px-1 py-0.5 text-[11px] leading-relaxed text-text transition-colors hover:bg-cyan/10 hover:text-cyan focus-visible:bg-cyan/10 focus-visible:text-cyan"
-                    >
-                      <span className="mr-2 text-text-faint">{relativeTime(activity.createdAt)}</span>
-                      {activity.detail || activity.summary}
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <p className="mb-2 text-sm leading-relaxed text-text">{item.detail || item.summary}</p>
-              )}
+              <div className="mb-2 space-y-1.5">
+                {item.type === "PushEvent" && item.commits.length > 0
+                  ? item.commits.map((commit) => (
+                      <DetailEntry
+                        key={commit.sha}
+                        href={commit.url ?? item.url ?? `https://github.com/${item.repo}/commit/${commit.sha}`}
+                        prefix={commit.sha.slice(0, 7)}
+                      >
+                        {commit.message}
+                      </DetailEntry>
+                    ))
+                  : item.activities.map((activity) => (
+                      <DetailEntry
+                        key={activity.id}
+                        href={activity.url ?? `https://github.com/${activity.repo}`}
+                        prefix={relativeTime(activity.createdAt)}
+                      >
+                        {activity.detail || activity.summary}
+                      </DetailEntry>
+                    ))}
+              </div>
               <div className="grid gap-1.5 border-t border-hairline/60 pt-2 text-text-faint sm:grid-cols-2">
                 <span>type: <span className="text-text-muted">{typeLabel}</span></span>
                 <span>grouped activities: <span className="text-text-muted">{item.activities.length}</span></span>
