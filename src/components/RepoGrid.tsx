@@ -123,6 +123,8 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
         const languages = Object.entries(repo.languages ?? {}).sort((a, b) => b[1] - a[1]);
         const languageTotal = languages.reduce((sum, [, bytes]) => sum + bytes, 0);
         const hasSelectedLanguage = languages.some(([language]) => language === selectedLanguage);
+        const fileCount = Object.values(repo.languageFiles ?? {}).reduce((sum, count) => sum + count, 0);
+        const loc = Math.max(1, Math.round(languages.reduce((sum, [, bytes]) => sum + bytes, 0) / 45));
 
         return (
         <motion.a
@@ -154,6 +156,7 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
           </div>
           {repo.homepage && <div className="truncate font-mono text-[10px] text-cyan">{repo.homepage.replace(/^https?:\/\//, "")}</div>}
           {!!repo.topics.length && <div className="truncate font-mono text-[10px] text-text-faint">#{repo.topics.join(" #")}</div>}
+          <div className="font-mono text-[10px] text-text-faint">{fileCount.toLocaleString()} files · ~{loc.toLocaleString()} LOC</div>
           <div className="flex items-center gap-3 text-[11px] font-mono text-text-faint mt-auto pt-2 border-t border-hairline/60">
             {repo.language && (
               <span className="flex items-center gap-1.5 text-text-muted">

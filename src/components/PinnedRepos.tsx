@@ -4,8 +4,16 @@ import { motion } from "framer-motion";
 import { ExternalLink, GitFork, Pin, Star } from "lucide-react";
 import { compactNumber } from "@/lib/format";
 import type { PinnedRepo } from "@/lib/types";
+import type { RepoSummary } from "@/lib/types";
 
-export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
+function repoMetrics(repo: RepoSummary | undefined) {
+  if (!repo) return null;
+  const files = Object.values(repo.languageFiles ?? {}).reduce((sum, count) => sum + count, 0);
+  const bytes = Object.values(repo.languages ?? {}).reduce((sum, count) => sum + count, 0);
+  return { files, loc: Math.max(1, Math.round(bytes / 45)) };
+}
+
+export default function PinnedRepos({ repos, allRepos }: { repos: PinnedRepo[] | null; allRepos: RepoSummary[] }) {
   if (!repos?.length) return null;
 
   return (
@@ -21,6 +29,9 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
       </div>
       <div className="grid flex-1 gap-4 sm:grid-cols-2">
         {repos.map((repo, index) => (
+          (() => {
+            const metrics = repoMetrics(allRepos.find((candidate) => candidate.name === repo.name));
+            return (
           <motion.a
             key={repo.url}
             href={repo.url}
@@ -50,6 +61,7 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
               </div>
               {repo.homepage && <div className="truncate font-mono text-[10px] text-cyan">{repo.homepage.replace(/^https?:\/\//, "")}</div>}
               {!!repo.topics?.length && <div className="truncate font-mono text-[10px] text-text-faint">#{repo.topics.join(" #")}</div>}
+              {metrics && <div className="font-mono text-[10px] text-text-faint">{metrics.files.toLocaleString()} files · ~{metrics.loc.toLocaleString()} LOC</div>}
             </div>
             <div className="mt-auto flex items-center gap-3 border-t border-hairline/60 pt-2 font-mono text-[11px] text-text-faint">
               {repo.primaryLanguage && (
@@ -80,6 +92,8 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
               />
             </div>
           </motion.a>
+            );
+          })()
         ))}
       </div>
     </section>
