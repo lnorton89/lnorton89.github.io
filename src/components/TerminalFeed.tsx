@@ -92,7 +92,7 @@ function Line({
         <span className={`inline-flex w-[92px] shrink-0 items-center justify-center rounded-full border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide transition-all group-hover:brightness-125 ${TYPE_BADGE[item.type] ?? "border-hairline bg-surface-raised text-text-muted"}`}>
           {typeLabel}
         </span>
-        <span className="min-w-0 shrink-0 truncate text-text-muted transition-colors group-hover:text-text">{item.repo}</span>
+        <span className="min-w-0 max-w-[24%] truncate text-text-muted transition-colors group-hover:text-text">{item.repo}</span>
         <span className="min-w-0 truncate text-text">
           {item.summary}
           {item.detail && <span className="text-text-faint"> — {item.detail}</span>}

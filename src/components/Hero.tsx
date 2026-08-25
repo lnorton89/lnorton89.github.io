@@ -108,6 +108,7 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
       </motion.div>
 
       <motion.div
+        className="min-w-0"
         initial={{ opacity: 0, x: 16 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, delay: 0.25, ease: EASE_OUT }}
