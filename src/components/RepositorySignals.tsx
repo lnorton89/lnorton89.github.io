@@ -2,8 +2,11 @@
 
 import { GitFork, Hash, Languages, Star, CircleDot } from "lucide-react";
 import type { RepoSummary } from "@/lib/types";
+import { useLiveDataStore } from "@/store/live-data-store";
 
 export default function RepositorySignals({ repos }: { repos: RepoSummary[] }) {
+  const live = useLiveDataStore((state) => state.liveSnapshot);
+  repos = live?.topRepos ?? repos;
   const stars = repos.reduce((sum, repo) => sum + repo.stars, 0);
   const forks = repos.reduce((sum, repo) => sum + repo.forks, 0);
   const issues = repos.reduce((sum, repo) => sum + repo.openIssues, 0);

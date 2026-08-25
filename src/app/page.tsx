@@ -9,6 +9,7 @@ import ProjectTimeline from "@/components/ProjectTimeline";
 import RepoGrid from "@/components/RepoGrid";
 import PinnedRepos from "@/components/PinnedRepos";
 import SectionReveal from "@/components/SectionReveal";
+import LiveUpdateFeedback from "@/components/LiveUpdateFeedback";
 import { Activity, FolderGit2 } from "lucide-react";
 import type { GithubSnapshot } from "@/lib/types";
 
@@ -38,6 +39,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen">
+      <LiveUpdateFeedback />
       <div className="mx-auto max-w-6xl px-6">
         <Hero data={data} />
 

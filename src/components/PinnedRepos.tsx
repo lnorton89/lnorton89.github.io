@@ -5,6 +5,7 @@ import { ExternalLink, GitFork, Pin, Star } from "lucide-react";
 import { compactNumber } from "@/lib/format";
 import type { PinnedRepo } from "@/lib/types";
 import type { RepoSummary } from "@/lib/types";
+import { useLiveDataStore } from "@/store/live-data-store";
 
 function repoMetrics(repo: RepoSummary | undefined) {
   if (!repo) return null;
@@ -14,6 +15,8 @@ function repoMetrics(repo: RepoSummary | undefined) {
 }
 
 export default function PinnedRepos({ repos, allRepos }: { repos: PinnedRepo[] | null; allRepos: RepoSummary[] }) {
+  const live = useLiveDataStore((state) => state.liveSnapshot);
+  const liveRepos = live?.topRepos ?? allRepos;
   if (!repos?.length) return null;
 
   return (
@@ -30,7 +33,7 @@ export default function PinnedRepos({ repos, allRepos }: { repos: PinnedRepo[] |
       <div className="grid flex-1 gap-4 sm:grid-cols-2">
         {repos.map((repo, index) => (
           (() => {
-            const metrics = repoMetrics(allRepos.find((candidate) => candidate.name === repo.name));
+            const metrics = repoMetrics(liveRepos.find((candidate) => candidate.name === repo.name));
             return (
           <motion.a
             key={repo.url}

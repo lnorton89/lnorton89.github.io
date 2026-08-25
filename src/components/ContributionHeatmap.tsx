@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ContributionsCollection, WeeklyCommits } from "@/lib/types";
+import { useLiveDataStore } from "@/store/live-data-store";
 
 function intensity(count: number, max: number): number {
   if (max <= 0) return 0;
@@ -35,6 +36,8 @@ export default function ContributionHeatmap({
   weeklyFallback: WeeklyCommits[];
   embedded?: boolean;
 }) {
+  const live = useLiveDataStore((state) => state.liveSnapshot);
+  const liveWeeklyFallback = live?.weeklyCommits ?? weeklyFallback;
   const [hovered, setHovered] = useState<{ label: string; x: number; y: number } | null>(null);
   const [windowWeeks, setWindowWeeks] = useState(52);
 
@@ -62,7 +65,7 @@ export default function ContributionHeatmap({
         ),
       };
     }
-    const weeks = weeklyFallback.slice(-windowWeeks);
+    const weeks = liveWeeklyFallback.slice(-windowWeeks);
     const max = Math.max(1, ...weeks.map((w) => w.commits));
     return {
       max,
@@ -77,7 +80,7 @@ export default function ContributionHeatmap({
         })),
       ]),
     };
-  }, [contributions, weeklyFallback, windowWeeks]);
+  }, [contributions, liveWeeklyFallback, windowWeeks]);
 
   const total = grid.columns.reduce((sum, column) => sum + column.reduce((columnTotal, cell) => columnTotal + cell.count, 0), 0);
 

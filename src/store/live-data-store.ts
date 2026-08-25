@@ -4,6 +4,7 @@ import type { GithubSnapshot } from "@/lib/types";
 interface LiveDataState {
   liveSnapshot: GithubSnapshot | null;
   lastSyncedAt: string | null;
+  updateVersion: number;
   selectedLanguage: string | null;
   setLiveSnapshot: (snapshot: GithubSnapshot) => void;
   setSelectedLanguage: (language: string | null) => void;
@@ -15,8 +16,13 @@ interface LiveDataState {
 export const useLiveDataStore = create<LiveDataState>((set) => ({
   liveSnapshot: null,
   lastSyncedAt: null,
+  updateVersion: 0,
   selectedLanguage: null,
   setLiveSnapshot: (snapshot) =>
-    set({ liveSnapshot: snapshot, lastSyncedAt: new Date().toISOString() }),
+    set((state) => ({
+      liveSnapshot: snapshot,
+      lastSyncedAt: new Date().toISOString(),
+      updateVersion: state.updateVersion + 1,
+    })),
   setSelectedLanguage: (language) => set({ selectedLanguage: language }),
 }));

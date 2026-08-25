@@ -1,7 +1,12 @@
+"use client";
+
 import { Calendar, Clock3, Star, Waypoints } from "lucide-react";
 import type { RepoSummary } from "@/lib/types";
+import { useLiveDataStore } from "@/store/live-data-store";
 
 export default function ProjectTimeline({ repos }: { repos: RepoSummary[] }) {
+  const live = useLiveDataStore((state) => state.liveSnapshot);
+  repos = live?.topRepos ?? repos;
   if (!repos.length) return null;
 
   const oldest = [...repos].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))[0];

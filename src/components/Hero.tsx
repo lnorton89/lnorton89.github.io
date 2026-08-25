@@ -7,6 +7,7 @@ import TerminalFeed from "@/components/TerminalFeed";
 import LiveSync from "@/components/LiveSync";
 import { compactNumber } from "@/lib/format";
 import type { GithubSnapshot } from "@/lib/types";
+import { useLiveDataStore } from "@/store/live-data-store";
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
@@ -20,7 +21,8 @@ const item: Variants = {
 };
 
 export default function Hero({ data }: { data: GithubSnapshot }) {
-  const { profile, contributions } = data;
+  const live = useLiveDataStore((state) => state.liveSnapshot);
+  const { profile, contributions } = live ?? data;
   const stats = [
     { label: "Public repositories", value: profile.publicRepos, icon: FolderGit2 },
     { label: "Followers", value: profile.followers, icon: Users },

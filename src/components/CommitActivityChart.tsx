@@ -3,8 +3,11 @@
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { useState } from "react";
 import type { WeeklyCommits } from "@/lib/types";
+import { useLiveDataStore } from "@/store/live-data-store";
 
 export default function CommitActivityChart({ weekly, embedded = false }: { weekly: WeeklyCommits[]; embedded?: boolean }) {
+  const live = useLiveDataStore((state) => state.liveSnapshot);
+  weekly = live?.weeklyCommits ?? weekly;
   const [windowWeeks, setWindowWeeks] = useState(16);
   const visibleWeeks = weekly.slice(-windowWeeks);
   const totalRecent = visibleWeeks.reduce((s, w) => s + w.commits, 0);
