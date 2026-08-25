@@ -85,13 +85,13 @@ export async function fetchLiveSnapshot(
       languages: r.language ? { [r.language]: 1 } : {},
     }));
 
-  const feed: FeedItem[] = events.slice(0, 30).map((e) => ({
+  const feed: FeedItem[] = await Promise.all(events.slice(0, 30).map(async (e) => ({
     id: e.id,
     type: e.type,
     repo: e.repo?.name ?? "",
     createdAt: e.created_at,
     summary: summarize(e),
-    detail: detail(e),
+    detail: await detail(e),
     url: eventUrl(e),
     commits: e.type === "PushEvent"
       ? ((e.payload.commits as Array<{ sha?: string; message?: string }> | undefined) ?? [])
@@ -102,7 +102,7 @@ export async function fetchLiveSnapshot(
             url: e.repo?.name ? `https://github.com/${e.repo.name}/commit/${commit.sha}` : undefined,
           }))
       : undefined,
-  }));
+  })));
 
   const weeklyCommits = buildWeeklyCommits(events);
 
@@ -151,7 +151,7 @@ function summarize(e: { type: string; payload: Record<string, unknown> }): strin
   }
 }
 
-function detail(e: { type: string; payload: Record<string, unknown> }): string {
+async function detail(e: { type: string; repo?: { name: string }; payload: Record<string, unknown> }): Promise<string> {
   const payload = e.payload;
   switch (e.type) {
     case "PushEvent": {
@@ -160,8 +160,19 @@ function detail(e: { type: string; payload: Record<string, unknown> }): string {
       return commits?.[commits.length - 1]?.message?.split("\n")[0]
         ?? (head ? `commit ${head.slice(0, 7)}` : "push event with no commit details");
     }
-    case "PullRequestEvent":
-      return ((payload.pull_request as { title?: string } | undefined)?.title) ?? "pull request activity";
+    case "PullRequestEvent": {
+      const pullRequest = payload.pull_request as { title?: string; number?: number } | undefined;
+      if (pullRequest?.title) return pullRequest.title;
+      if (pullRequest?.number && e.repo?.name) {
+        try {
+          const pull = await get<{ title: string }>(`/repos/${e.repo.name}/pulls/${pullRequest.number}`);
+          return pull.title;
+        } catch {
+          return `pull request #${pullRequest.number}`;
+        }
+      }
+      return "pull request details unavailable";
+    }
     case "IssuesEvent":
       return ((payload.issue as { title?: string } | undefined)?.title) ?? "issue activity";
     case "CreateEvent":
@@ -181,7 +192,11 @@ function eventUrl(e: { type: string; repo?: { name: string }; payload: Record<st
     return `https://github.com/${e.repo.name}/commit/${payload.head}`;
   }
   if (e.type === "PullRequestEvent") {
-    return (payload.pull_request as { html_url?: string } | undefined)?.html_url;
+    const pullRequest = payload.pull_request as { html_url?: string; number?: number } | undefined;
+    return pullRequest?.html_url
+      ?? (pullRequest?.number && e.repo?.name
+        ? `https://github.com/${e.repo.name}/pull/${pullRequest.number}`
+        : undefined);
   }
   if (e.type === "IssuesEvent") {
     return (payload.issue as { html_url?: string } | undefined)?.html_url;

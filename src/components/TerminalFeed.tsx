@@ -154,19 +154,31 @@ function Line({
               {item.type === "PushEvent" && item.commits.length > 0 ? (
                 <div className="mb-2 space-y-1.5">
                   {item.commits.map((commit) => (
-                    <p key={commit.sha} className="text-sm leading-relaxed text-text">
+                    <a
+                      key={commit.sha}
+                      href={commit.url ?? item.url ?? `https://github.com/${item.repo}/commit/${commit.sha}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block rounded px-1 py-0.5 text-[11px] leading-relaxed text-text transition-colors hover:bg-cyan/10 hover:text-cyan focus-visible:bg-cyan/10 focus-visible:text-cyan"
+                    >
                       <span className="mr-2 text-cyan">{commit.sha.slice(0, 7)}</span>
                       {commit.message}
-                    </p>
+                    </a>
                   ))}
                 </div>
               ) : item.activities.length > 1 ? (
                 <div className="mb-2 space-y-1.5">
                   {item.activities.map((activity) => (
-                    <p key={activity.id} className="text-sm leading-relaxed text-text">
+                    <a
+                      key={activity.id}
+                      href={activity.url ?? `https://github.com/${activity.repo}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block rounded px-1 py-0.5 text-[11px] leading-relaxed text-text transition-colors hover:bg-cyan/10 hover:text-cyan focus-visible:bg-cyan/10 focus-visible:text-cyan"
+                    >
                       <span className="mr-2 text-text-faint">{relativeTime(activity.createdAt)}</span>
                       {activity.detail || activity.summary}
-                    </p>
+                    </a>
                   ))}
                 </div>
               ) : (

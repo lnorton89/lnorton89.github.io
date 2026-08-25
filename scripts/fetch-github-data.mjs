@@ -258,13 +258,26 @@ async function summarizeEvent(e) {
         })),
       };
     }
-    case "PullRequestEvent":
+    case "PullRequestEvent": {
+      let title = e.payload.pull_request?.title;
+      if (!title && e.payload.pull_request?.number && e.repo?.name) {
+        try {
+          const pull = await rest(`/repos/${e.repo.name}/pulls/${e.payload.pull_request.number}`);
+          title = pull.title;
+        } catch {
+          title = `pull request #${e.payload.pull_request.number}`;
+        }
+      }
       return {
         ...base,
         summary: `${e.payload.action} a pull request`,
-        detail: e.payload.pull_request?.title,
-        url: e.payload.pull_request?.html_url,
+        detail: title || "pull request details unavailable",
+        url: e.payload.pull_request?.html_url
+          ?? (e.payload.pull_request?.number && e.repo?.name
+            ? `https://github.com/${e.repo.name}/pull/${e.payload.pull_request.number}`
+            : undefined),
       };
+    }
     case "IssuesEvent":
       return {
         ...base,
