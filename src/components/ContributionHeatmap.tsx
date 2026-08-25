@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ContributionsCollection, WeeklyCommits } from "@/lib/types";
 
 function intensity(count: number, max: number): number {
@@ -116,15 +117,18 @@ export default function ContributionHeatmap({
           </div>
         ))}
       </div>
-      {hovered && (
-        <div
-          role="tooltip"
-          className="pointer-events-none fixed z-50 max-w-[220px] -translate-y-full rounded-md border border-hairline bg-surface-raised px-2.5 py-1.5 text-center font-mono text-[11px] text-text shadow-lg"
-          style={{ left: hovered.x, top: hovered.y }}
-        >
-          {hovered.label}
-        </div>
-      )}
+      {hovered &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="tooltip"
+            className="pointer-events-none fixed z-50 max-w-[220px] -translate-y-full rounded-md border border-hairline bg-surface-raised px-2.5 py-1.5 text-center font-mono text-[11px] text-text shadow-lg"
+            style={{ left: hovered.x, top: hovered.y }}
+          >
+            {hovered.label}
+          </div>,
+          document.body
+        )}
       <div className="flex items-center gap-1.5 mt-3 justify-end">
         <span className="font-mono text-[11px] text-text-faint mr-1">less</span>
         {CELL_STYLES.map((style, i) => (
