@@ -43,7 +43,7 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
         variants={stagger}
         initial="hidden"
         animate="show"
-        className="grid min-w-0 items-end gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-12"
+        className="grid min-w-0 items-end gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-12"
       >
         <div className="min-w-0">
         <motion.div variants={item} className="flex items-center gap-3 mb-6">
@@ -109,7 +109,7 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
         </div>
 
         <div className="flex min-w-0 flex-col gap-7 lg:pb-1">
-          <motion.div variants={item} className="grid grid-cols-2 gap-x-4 gap-y-4 border-y border-hairline/70 py-4 sm:grid-cols-3">
+          <motion.div variants={item} className="grid grid-cols-2 gap-x-4 gap-y-4 border-y border-hairline/70 py-4 sm:grid-cols-3 lg:grid-cols-5">
             {stats.map((s) => (
               <div key={s.label} className="min-w-0">
                 <div className="mb-1 flex items-center gap-2 text-text-faint">
