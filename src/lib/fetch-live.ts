@@ -2,11 +2,18 @@ import type { GithubSnapshot, RepoSummary, FeedItem } from "@/lib/types";
 
 const REST = "https://api.github.com";
 
+export class GithubApiError extends Error {
+  constructor(public readonly path: string, public readonly status: number) {
+    super(`GitHub API ${path} failed: ${status}`);
+    this.name = "GithubApiError";
+  }
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${REST}${path}`, {
     headers: { Accept: "application/vnd.github+json" },
   });
-  if (!res.ok) throw new Error(`GitHub API ${path} failed: ${res.status}`);
+  if (!res.ok) throw new GithubApiError(path, res.status);
   return res.json();
 }
 

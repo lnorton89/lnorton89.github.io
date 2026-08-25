@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Check, RefreshCw } from "lucide-react";
-import { fetchLiveSnapshot } from "@/lib/fetch-live";
+import { fetchLiveSnapshot, GithubApiError } from "@/lib/fetch-live";
 import { useLiveDataStore } from "@/store/live-data-store";
 import { relativeTime } from "@/lib/format";
 import type { GithubSnapshot } from "@/lib/types";
@@ -12,7 +12,7 @@ export default function LiveSync({ base }: { base: GithubSnapshot }) {
   const lastSyncedAt = useLiveDataStore((s) => s.lastSyncedAt);
   const updateVersion = useLiveDataStore((s) => s.updateVersion);
 
-  const { refetch, isFetching, isError } = useQuery({
+  const { refetch, isFetching, isError, error } = useQuery({
     queryKey: ["live-github-snapshot", base.profile.login],
     queryFn: async () => {
       const snapshot = await fetchLiveSnapshot(base.profile.login, base);
@@ -23,6 +23,7 @@ export default function LiveSync({ base }: { base: GithubSnapshot }) {
     refetchInterval: 15 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
+  const isRateLimited = error instanceof GithubApiError && error.status === 403;
 
   return (
     <div className="flex items-center gap-3 font-mono text-xs text-text-faint">
@@ -42,7 +43,9 @@ export default function LiveSync({ base }: { base: GithubSnapshot }) {
       </button>
       <span>
         {isError
-          ? "Sync failed — try again later"
+          ? isRateLimited
+            ? "GitHub API limit reached — try later"
+            : "Sync failed — try again later"
           : lastSyncedAt
             ? `${updateVersion > 0 ? "live update" : "synced"} ${relativeTime(lastSyncedAt)}`
             : `Snapshot built ${relativeTime(base.generatedAt)}`}
