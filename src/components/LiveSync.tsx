@@ -33,9 +33,6 @@ export default function LiveSync({ base }: { base: GithubSnapshot }) {
       <button
         onClick={() => {
           setEnabled(true);
-          refetch().then((res) => {
-            if (res.data) setLiveSnapshot(res.data);
-          });
         }}
         disabled={isFetching}
         className="flex items-center gap-1.5 rounded-md border border-hairline bg-surface-raised px-3 py-1.5 text-text-muted hover:text-cyan hover:border-cyan/50 transition-colors disabled:opacity-50"

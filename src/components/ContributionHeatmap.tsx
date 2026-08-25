@@ -51,11 +51,14 @@ export default function ContributionHeatmap({
     return {
       max,
       columns: weeklyFallback.map((w) => [
-        {
-          key: w.weekStart,
-          count: w.commits,
-          label: `${w.commits} commit${w.commits === 1 ? "" : "s"} in the week of ${w.weekStart}`,
-        },
+        ...Array.from({ length: 7 }, (_, weekday) => ({
+          key: `${w.weekStart}-${weekday}`,
+          count: weekday === 3 ? w.commits : 0,
+          label:
+            weekday === 3
+              ? `${w.commits} commit${w.commits === 1 ? "" : "s"} in the week of ${w.weekStart}`
+              : `No commits in the week of ${w.weekStart}`,
+        })),
       ]),
     };
   }, [contributions, weeklyFallback]);
@@ -63,7 +66,7 @@ export default function ContributionHeatmap({
   const total = contributions?.contributionCalendar.totalContributions;
 
   return (
-    <div className="rounded-lg border border-hairline bg-surface/80 backdrop-blur-sm p-5">
+    <div className="min-w-0 rounded-lg border border-hairline bg-surface/80 backdrop-blur-sm p-5">
       <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
         <h3 className="font-display text-sm font-semibold tracking-wide text-text uppercase">
           Contribution pulse
@@ -74,9 +77,9 @@ export default function ContributionHeatmap({
             : "approximate — recent public push activity"}
         </span>
       </div>
-      <div className="flex gap-[3px] overflow-x-auto scroll-thin pb-2">
+      <div className="grid w-full min-w-[560px] grid-flow-col auto-cols-fr gap-[3px] overflow-x-auto scroll-thin pb-2">
         {grid.columns.map((col, ci) => (
-          <div key={ci} className="flex flex-col gap-[3px]">
+          <div key={ci} className="grid grid-rows-7 gap-[3px] min-w-[9px]">
             {col.map((cell, ri) => (
               <motion.div
                 key={cell.key}
@@ -85,7 +88,7 @@ export default function ContributionHeatmap({
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ duration: 0.25, delay: (ci * col.length + ri) * 0.002 }}
-                className={`h-[11px] w-[11px] rounded-[2px] ${CELL_STYLES[intensity(cell.count, grid.max)]}`}
+                className={`aspect-square w-full rounded-[2px] ${CELL_STYLES[intensity(cell.count, grid.max)]}`}
               />
             ))}
           </div>

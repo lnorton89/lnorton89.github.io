@@ -211,8 +211,8 @@ function summarizeEvent(e) {
     case "PushEvent":
       return {
         ...base,
-        summary: `pushed ${e.payload.commits?.length ?? 0} commit${
-          e.payload.commits?.length === 1 ? "" : "s"
+        summary: `pushed ${Math.max(1, e.payload.commits?.length ?? 0)} commit${
+          Math.max(1, e.payload.commits?.length ?? 0) === 1 ? "" : "s"
         }`,
         detail: e.payload.commits?.[e.payload.commits.length - 1]?.message?.split("\n")[0],
       };
@@ -261,7 +261,9 @@ function buildWeeklyCommits(events) {
     const diffWeeks = Math.floor((now - created) / (7 * 24 * 60 * 60 * 1000));
     const idx = 51 - diffWeeks;
     if (idx >= 0 && idx < weeks.length) {
-      weeks[idx].commits += e.payload.commits?.length ?? 0;
+      // Public events may omit the commits array; count the push itself rather
+      // than displaying a misleading all-zero velocity chart.
+      weeks[idx].commits += Math.max(1, e.payload.commits?.length ?? 0);
     }
   }
   return weeks;

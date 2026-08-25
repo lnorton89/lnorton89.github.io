@@ -92,6 +92,8 @@ export async function fetchLiveSnapshot(
     summary: summarize(e),
   }));
 
+  const weeklyCommits = buildWeeklyCommits(events);
+
   return {
     ...base,
     generatedAt: new Date().toISOString(),
@@ -111,6 +113,7 @@ export async function fetchLiveSnapshot(
     },
     topRepos,
     feed,
+    weeklyCommits,
   };
 }
 
@@ -118,7 +121,8 @@ function summarize(e: { type: string; payload: Record<string, unknown> }): strin
   switch (e.type) {
     case "PushEvent": {
       const commits = e.payload.commits as unknown[] | undefined;
-      return `pushed ${commits?.length ?? 0} commit${commits?.length === 1 ? "" : "s"}`;
+      const count = Math.max(1, commits?.length ?? 0);
+      return `pushed ${count} commit${count === 1 ? "" : "s"}`;
     }
     case "PullRequestEvent":
       return `${e.payload.action} a pull request`;
@@ -133,4 +137,25 @@ function summarize(e: { type: string; payload: Record<string, unknown> }): strin
     default:
       return e.type;
   }
+}
+
+function buildWeeklyCommits(events: { type: string; created_at: string; payload: Record<string, unknown> }[]) {
+  const now = new Date();
+  const weeks = Array.from({ length: 52 }, (_, index) => {
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - (51 - index) * 7);
+    return { weekStart: weekStart.toISOString().slice(0, 10), commits: 0 };
+  });
+
+  for (const event of events) {
+    if (event.type !== "PushEvent") continue;
+    const diffWeeks = Math.floor((now.getTime() - new Date(event.created_at).getTime()) / (7 * 24 * 60 * 60 * 1000));
+    const index = 51 - diffWeeks;
+    if (index >= 0 && index < weeks.length) {
+      const commits = event.payload.commits as unknown[] | undefined;
+      weeks[index].commits += Math.max(1, commits?.length ?? 0);
+    }
+  }
+
+  return weeks;
 }
