@@ -87,11 +87,7 @@ export default function ContributionHeatmap({
         <h3 className="font-display text-sm font-semibold tracking-wide text-text">
           Contribution pulse
         </h3>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <span className="font-mono text-xs text-text-muted">
-            {contributions ? `${total.toLocaleString()} contributions` : "Approximate public push activity"}
-          </span>
-          <div className="flex items-center rounded border border-hairline p-0.5" aria-label="Contribution time window">
+        <div className="flex items-center rounded border border-hairline p-0.5" aria-label="Contribution time window">
             {[
               { weeks: 13, label: "3m" },
               { weeks: 26, label: "6m" },
@@ -109,7 +105,6 @@ export default function ContributionHeatmap({
                 {label}
               </button>
             ))}
-          </div>
         </div>
       </div>
       <div
@@ -155,12 +150,17 @@ export default function ContributionHeatmap({
           </div>,
           document.body
         )}
-      <div className="flex items-center gap-1.5 mt-3 justify-end">
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <span className="font-mono text-xs text-text-muted">
+          {contributions ? `${total.toLocaleString()} contributions` : "Approximate public push activity"}
+        </span>
+        <div className="flex items-center gap-1.5">
         <span className="font-mono text-[11px] text-text-faint mr-1">less</span>
         {CELL_STYLES.map((style, i) => (
           <span key={i} className={`h-[10px] w-[10px] rounded-[2px] ${style}`} />
         ))}
         <span className="font-mono text-[11px] text-text-faint ml-1">more</span>
+        </div>
       </div>
     </div>
   );

@@ -15,9 +15,7 @@ export default function CommitActivityChart({ weekly, embedded = false }: { week
         <h3 className="font-display text-sm font-semibold tracking-wide">
           Commit velocity
         </h3>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <span className="font-mono text-xs text-text-muted">{totalRecent} in last {windowWeeks} weeks</span>
-          <div className="flex items-center rounded border border-hairline p-0.5" aria-label="Commit velocity time window">
+        <div className="flex items-center rounded border border-hairline p-0.5" aria-label="Commit velocity time window">
             {[4, 8, 16, 26, 52].map((weeks) => (
               <button
                 key={weeks}
@@ -31,7 +29,6 @@ export default function CommitActivityChart({ weekly, embedded = false }: { week
                 {weeks}w
               </button>
             ))}
-          </div>
         </div>
       </div>
       {totalRecent === 0 ? (
@@ -80,6 +77,9 @@ export default function CommitActivityChart({ weekly, embedded = false }: { week
         </ResponsiveContainer>
       </div>
       )}
+      <p className="mt-3 font-mono text-xs text-text-muted">
+        {totalRecent} commits in last {windowWeeks} weeks
+      </p>
     </div>
   );
 }
