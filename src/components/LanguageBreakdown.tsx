@@ -98,7 +98,7 @@ export default function LanguageBreakdown({
                       type="button"
                       onClick={() => setSelectedLanguage(selectedLanguage === d.name ? null : d.name)}
                       aria-pressed={selectedLanguage === d.name}
-                      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto_minmax(80px,0.7fr)] items-center gap-2 rounded px-1 py-1 text-left text-xs transition-colors hover:bg-surface-raised ${
+                      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_3rem_minmax(120px,1.5fr)] items-center gap-2 rounded px-1 py-1 text-left text-xs transition-colors hover:bg-surface-raised ${
                         selectedLanguage && selectedLanguage !== d.name ? "opacity-45" : ""
                       } ${selectedLanguage === d.name ? "bg-surface-raised" : ""}`}
                     >
@@ -107,7 +107,7 @@ export default function LanguageBreakdown({
                         return <LanguageIcon className="h-3.5 w-3.5 shrink-0" style={{ color: languageColor(d.name) }} aria-hidden="true" />;
                       })()}
                       <span className="truncate text-text">{d.name}</span>
-                      <span className="ml-auto shrink-0 font-mono text-text-faint">{d.pct}%</span>
+                      <span className="shrink-0 text-right font-mono text-text-faint">{d.pct}%</span>
                       <span className="h-2 overflow-hidden rounded-full bg-surface-raised" aria-hidden="true">
                         <span
                           className="block h-full rounded-full transition-[width,background-color,opacity]"
