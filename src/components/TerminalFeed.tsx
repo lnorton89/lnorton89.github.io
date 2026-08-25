@@ -32,42 +32,14 @@ type GroupedFeedItem = FeedItem & {
 };
 
 function groupByRepository(feed: FeedItem[]): GroupedFeedItem[] {
-  const grouped = new Map<string, FeedItem[]>();
-
-  for (const item of feed) {
-    const key = `${item.repo}:${item.type}`;
-    const items = grouped.get(key) ?? [];
-    items.push(item);
-    grouped.set(key, items);
-  }
-
-  const groups = Array.from(grouped.values()).slice(0, 24);
-  const totalCommits = groups
-    .filter((activities) => activities[0].type === "PushEvent")
-    .reduce((count, activities) => count + activities.flatMap((activity) => activity.commits ?? []).length, 0);
-  const shouldSplitPushes = totalCommits >= 10 && groups.length < 10;
-  const commitBatchSize = shouldSplitPushes ? Math.max(1, Math.floor(totalCommits / 10)) : totalCommits;
-  const output = groups.flatMap((activities) => {
-    const first = activities[0];
-    const commits = activities.flatMap((activity) => activity.commits ?? []);
-    if (first.type !== "PushEvent" || commits.length <= commitBatchSize) {
-      return [createGroupedItem(activities, commits)];
-    }
-    return Array.from({ length: Math.ceil(commits.length / commitBatchSize) }, (_, index) =>
-      createGroupedItem(
-        activities,
-        commits.slice(index * commitBatchSize, (index + 1) * commitBatchSize),
-        `-${index}`
-      )
-    );
-  });
-  return output.slice(0, 24);
+  return feed.slice(0, 24).map((item) =>
+    createGroupedItem([item], item.commits ?? [])
+  );
 }
 
 function createGroupedItem(
   activities: FeedItem[],
-  commits: FeedCommit[],
-  suffix = ""
+  commits: FeedCommit[]
 ): GroupedFeedItem {
   const first = activities[0];
   const activityCount = first.type === "PushEvent"
@@ -75,7 +47,7 @@ function createGroupedItem(
     : activities.length;
   return {
     ...first,
-    id: `${first.repo}-${first.type}${suffix}`,
+    id: first.id,
     createdAt: first.createdAt,
     summary: groupedSummary(first, activityCount),
     detail: activities.length === 1 ? first.detail : undefined,
