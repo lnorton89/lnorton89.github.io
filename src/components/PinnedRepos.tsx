@@ -9,7 +9,7 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
   if (!repos?.length) return null;
 
   return (
-    <section className="pb-14">
+    <section>
       <div className="mb-4">
         <h2 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide text-text">
           <Pin className="h-4 w-4 text-amber" aria-hidden="true" />
@@ -19,7 +19,7 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
           a focused set of repositories worth exploring
         </p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         {repos.map((repo, index) => (
           <motion.a
             key={repo.url}
@@ -31,7 +31,7 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
             viewport={{ once: true, margin: "-40px" }}
             transition={{ duration: 0.35, delay: index * 0.05 }}
             whileHover={{ y: -3, borderColor: "var(--cyan)" }}
-            className="group flex min-h-36 flex-col gap-3 rounded-lg border border-hairline bg-surface/80 p-4 pb-3 backdrop-blur-sm transition-[border-color,transform,background-color] hover:bg-surface-raised/60"
+            className="group flex flex-col gap-3 rounded-lg border border-hairline bg-surface/80 p-4 pb-3 backdrop-blur-sm transition-[border-color,opacity,transform,background-color] hover:bg-surface-raised/60"
           >
             <div>
               <div className="flex items-start justify-between gap-3">

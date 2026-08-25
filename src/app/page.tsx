@@ -62,11 +62,10 @@ export default function Home() {
           </div>
         </section>
 
-        <PinnedRepos repos={data.pinnedRepos} />
-
-        <section className="pb-14">
+        <div className="grid items-start gap-8 pb-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+          <PinnedRepos repos={data.pinnedRepos} />
           <LanguageBreakdown languageTotals={data.languageTotals} />
-        </section>
+        </div>
 
         <section className="pb-20">
           <div className="flex items-baseline justify-between mb-4">
