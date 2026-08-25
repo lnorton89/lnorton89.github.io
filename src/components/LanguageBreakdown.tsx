@@ -3,8 +3,42 @@
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { motion } from "framer-motion";
 import { Code2 } from "lucide-react";
+import type { IconType } from "react-icons";
+import {
+  SiC,
+  SiCmake,
+  SiCplusplus,
+  SiSharp,
+  SiCss,
+  SiGo,
+  SiGnubash,
+  SiHtml5,
+  SiJavascript,
+  SiNixos,
+  SiPowers,
+  SiPython,
+  SiRust,
+  SiTypescript,
+} from "react-icons/si";
 import { languageColor } from "@/lib/format";
 import { useLiveDataStore } from "@/store/live-data-store";
+
+const LANGUAGE_ICONS: Record<string, IconType> = {
+  C: SiC,
+  CMake: SiCmake,
+  "C++": SiCplusplus,
+  "C#": SiSharp,
+  CSS: SiCss,
+  Go: SiGo,
+  Shell: SiGnubash,
+  HTML: SiHtml5,
+  JavaScript: SiJavascript,
+  Nix: SiNixos,
+  PowerShell: SiPowers,
+  Python: SiPython,
+  Rust: SiRust,
+  TypeScript: SiTypescript,
+};
 
 export default function LanguageBreakdown({
   languageTotals,
@@ -57,7 +91,8 @@ export default function LanguageBreakdown({
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="h-[250px] min-w-0 flex-1"
+                className="min-w-0 flex-1"
+                style={{ height: Math.max(250, data.length * 25) }}
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data} layout="vertical" margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
@@ -65,8 +100,8 @@ export default function LanguageBreakdown({
                     <YAxis
                       type="category"
                       dataKey="name"
-                      width={68}
-                      tick={{ fill: "#8b909b", fontSize: 10, fontFamily: "var(--font-mono)" }}
+                      width={8}
+                      tick={false}
                       tickLine={false}
                       axisLine={false}
                     />
@@ -114,7 +149,10 @@ export default function LanguageBreakdown({
                         selectedLanguage && selectedLanguage !== d.name ? "opacity-45" : ""
                       } ${selectedLanguage === d.name ? "bg-surface-raised" : ""}`}
                     >
-                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: languageColor(d.name) }} />
+                      {(() => {
+                        const LanguageIcon = LANGUAGE_ICONS[d.name] ?? Code2;
+                        return <LanguageIcon className="h-3.5 w-3.5 shrink-0" style={{ color: languageColor(d.name) }} aria-hidden="true" />;
+                      })()}
                       <span className="truncate text-text">{d.name}</span>
                       <span className="ml-auto shrink-0 font-mono text-text-faint">{d.pct}%</span>
                     </button>
