@@ -30,8 +30,14 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
   ];
 
   return (
-    <section className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 items-start pt-20 pb-16">
-      <motion.div variants={stagger} initial="hidden" animate="show" className="min-w-0">
+    <section className="flex flex-col gap-8 pt-16 pb-16 lg:pt-20">
+      <motion.div
+        variants={stagger}
+        initial="hidden"
+        animate="show"
+        className="grid min-w-0 items-end gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-12"
+      >
+        <div className="min-w-0">
         <motion.div variants={item} className="flex items-center gap-3 mb-6">
           <Image
             src={profile.avatarUrl}
@@ -87,28 +93,31 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
             </a>
           )}
         </motion.div>
+        </div>
 
-        <motion.div variants={item} className="mt-8 flex flex-wrap gap-8">
-          {stats.map((s) => (
-            <div key={s.label}>
-              <div className="mb-1 flex items-center gap-2 text-text-faint">
-                <s.icon className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="font-mono text-[11px] uppercase tracking-wide">{s.label}</span>
+        <div className="flex min-w-0 flex-col gap-7 lg:pb-1">
+          <motion.div variants={item} className="grid grid-cols-3 gap-4 border-y border-hairline/70 py-4">
+            {stats.map((s) => (
+              <div key={s.label} className="min-w-0">
+                <div className="mb-1 flex items-center gap-2 text-text-faint">
+                  <s.icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span className="truncate font-mono text-[11px] uppercase tracking-wide">{s.label}</span>
+                </div>
+                <div className="font-display text-3xl font-semibold text-text tabular-nums">
+                  {compactNumber(s.value)}
+                </div>
               </div>
-              <div className="font-display text-3xl font-semibold text-text tabular-nums">
-                {compactNumber(s.value)}
-              </div>
-            </div>
-          ))}
-        </motion.div>
+            ))}
+          </motion.div>
 
-        <motion.div variants={item} className="mt-8">
-          <LiveSync base={data} />
-        </motion.div>
+          <motion.div variants={item} className="flex items-center gap-3">
+            <LiveSync base={data} />
+          </motion.div>
+        </div>
       </motion.div>
 
       <motion.div
-        className="min-w-0"
+        className="min-w-0 w-full"
         initial={{ opacity: 0, x: 16 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, delay: 0.25, ease: EASE_OUT }}

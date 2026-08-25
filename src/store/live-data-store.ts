@@ -4,7 +4,9 @@ import type { GithubSnapshot } from "@/lib/types";
 interface LiveDataState {
   liveSnapshot: GithubSnapshot | null;
   lastSyncedAt: string | null;
+  selectedRepo: string | null;
   setLiveSnapshot: (snapshot: GithubSnapshot) => void;
+  setSelectedRepo: (repo: string | null) => void;
 }
 
 // Holds a client-refreshed snapshot fetched directly from the GitHub REST API.
@@ -13,6 +15,8 @@ interface LiveDataState {
 export const useLiveDataStore = create<LiveDataState>((set) => ({
   liveSnapshot: null,
   lastSyncedAt: null,
+  selectedRepo: null,
   setLiveSnapshot: (snapshot) =>
     set({ liveSnapshot: snapshot, lastSyncedAt: new Date().toISOString() }),
+  setSelectedRepo: (repo) => set({ selectedRepo: repo }),
 }));

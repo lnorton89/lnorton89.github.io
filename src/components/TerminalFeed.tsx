@@ -67,6 +67,8 @@ function Line({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const selectedRepo = useLiveDataStore((s) => s.selectedRepo);
+  const setSelectedRepo = useLiveDataStore((s) => s.setSelectedRepo);
   const typeLabel = TYPE_LABEL[item.type] ?? item.type.replace("Event", "").toLowerCase();
 
   return (
@@ -75,11 +77,17 @@ function Line({
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.35, delay: Math.min(index * 0.03, 0.4) }}
-      className="group rounded-md border-b border-hairline/50 text-[13px] leading-relaxed transition-colors last:border-0 hover:bg-surface-raised/70 focus-within:bg-surface-raised/70"
+      className={`group rounded-md border-b border-hairline/50 text-[13px] leading-relaxed transition-colors last:border-0 hover:bg-surface-raised/70 focus-within:bg-surface-raised/70 ${
+        selectedRepo && selectedRepo !== item.repo ? "opacity-45" : ""
+      } ${selectedRepo === item.repo ? "bg-cyan/5" : ""}`}
     >
       <button
         type="button"
         onClick={onToggle}
+        onPointerEnter={() => setSelectedRepo(item.repo)}
+        onPointerLeave={() => setSelectedRepo(null)}
+        onFocus={() => setSelectedRepo(item.repo)}
+        onBlur={() => setSelectedRepo(null)}
         aria-expanded={expanded}
         aria-controls={`activity-detail-${item.id}`}
         className="flex w-full min-w-0 items-center gap-2.5 px-2 py-2 text-left"
