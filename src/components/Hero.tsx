@@ -26,7 +26,14 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
     { label: "Followers", value: profile.followers, icon: Users },
     { label: "Following", value: profile.following, icon: Users },
     ...(contributions
-      ? [{ label: "Contributions / year", value: contributions.contributionCalendar.totalContributions, icon: Activity }]
+      ? [
+          { label: "Contributions / year", value: contributions.contributionCalendar.totalContributions, icon: Activity },
+          {
+            label: "Contributions / month",
+            value: Math.round(contributions.contributionCalendar.totalContributions / 12),
+            icon: Activity,
+          },
+        ]
       : []),
   ];
 
