@@ -11,8 +11,8 @@ async function get<T>(path: string): Promise<T> {
 }
 
 // Refreshes the parts of the snapshot that unauthenticated REST calls can see.
-// Runs entirely in the browser, so it's rate-limited to 60 req/hr per visitor IP —
-// fine for a personal "sync now" button, not for polling on an interval.
+// Keep this to three requests per refresh: browsers share GitHub's 60 req/hr
+// anonymous limit, so per-repository language requests are not safe to poll.
 export async function fetchLiveSnapshot(
   username: string,
   base: GithubSnapshot
@@ -64,24 +64,7 @@ export async function fetchLiveSnapshot(
     get<RestEvent[]>(`/users/${username}/events/public?per_page=30`),
   ]);
 
-  const languageResults = await Promise.all(
-    repos
-      .filter((repo) => !repo.fork && !repo.archived)
-      .map(async (repo) => {
-        try {
-          return [repo.full_name, await get<Record<string, number>>(`/repos/${repo.full_name}/languages`)] as const;
-        } catch {
-          return [repo.full_name, {}] as const;
-        }
-      })
-  );
-  const liveLanguages = new Map(languageResults);
-  const languageTotals = languageResults.reduce<Record<string, number>>((totals, [, languages]) => {
-    for (const [language, bytes] of Object.entries(languages)) {
-      totals[language] = (totals[language] ?? 0) + bytes;
-    }
-    return totals;
-  }, {});
+  const baseRepos = new Map(base.topRepos.map((repo) => [repo.fullName, repo]));
 
   const topRepos: RepoSummary[] = repos
     .filter((r) => !r.fork && !r.archived)
@@ -100,7 +83,8 @@ export async function fetchLiveSnapshot(
       createdAt: r.created_at,
       topics: r.topics || [],
       visibility: r.visibility,
-      languages: liveLanguages.get(r.full_name) ?? (r.language ? { [r.language]: 1 } : {}),
+      languages: baseRepos.get(r.full_name)?.languages ?? (r.language ? { [r.language]: 1 } : {}),
+      languageFiles: baseRepos.get(r.full_name)?.languageFiles,
     }));
 
   const feed: FeedItem[] = await Promise.all(events.slice(0, 30).map(async (e) => ({
@@ -141,7 +125,7 @@ export async function fetchLiveSnapshot(
       createdAt: profile.created_at,
       htmlUrl: profile.html_url,
     },
-    languageTotals,
+    languageTotals: base.languageTotals,
     topRepos,
     feed,
     weeklyCommits,
