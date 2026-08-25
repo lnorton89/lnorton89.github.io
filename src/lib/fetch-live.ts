@@ -67,7 +67,7 @@ export async function fetchLiveSnapshot(
   const topRepos: RepoSummary[] = repos
     .filter((r) => !r.fork && !r.archived)
     .sort((a, b) => new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime())
-    .slice(0, 6)
+    .slice(0, 18)
     .map((r) => ({
       name: r.name,
       fullName: r.full_name,
@@ -82,6 +82,7 @@ export async function fetchLiveSnapshot(
       createdAt: r.created_at,
       topics: r.topics || [],
       visibility: r.visibility,
+      languages: r.language ? { [r.language]: 1 } : {},
     }));
 
   const feed: FeedItem[] = events.slice(0, 30).map((e) => ({

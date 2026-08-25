@@ -30,6 +30,8 @@ const headers = {
   ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
 };
 
+const repoLanguages = {};
+
 async function rest(pathname, params = {}) {
   const url = new URL(REST + pathname);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
@@ -79,6 +81,7 @@ async function main() {
   for (const repo of languageTargets) {
     try {
       const langs = await rest(`/repos/${USERNAME}/${repo.name}/languages`);
+      repoLanguages[repo.full_name] = langs;
       for (const [lang, bytes] of Object.entries(langs)) {
         languageTotals[lang] = (languageTotals[lang] || 0) + bytes;
       }
@@ -89,7 +92,7 @@ async function main() {
 
   const topRepos = nonForkRepos
     .sort((a, b) => new Date(b.pushed_at) - new Date(a.pushed_at))
-    .slice(0, 6)
+    .slice(0, 18)
     .map((r) => ({
       name: r.name,
       fullName: r.full_name,
@@ -104,6 +107,7 @@ async function main() {
       createdAt: r.created_at,
       topics: r.topics || [],
       visibility: r.visibility,
+      languages: repoLanguages[r.full_name] || (r.language ? { [r.language]: 1 } : {}),
     }));
 
   const events = await rest(`/users/${USERNAME}/events/public`, { per_page: 50 });
