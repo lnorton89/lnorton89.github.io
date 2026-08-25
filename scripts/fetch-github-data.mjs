@@ -90,8 +90,8 @@ async function main() {
 
   const nonForkRepos = repos.filter((r) => !r.fork && !r.archived);
 
-  // Language bytes across the most recently active repos (capped to limit API calls)
-  const languageTargets = nonForkRepos.slice(0, 20);
+  // Language bytes across every non-fork, non-archived repository.
+  const languageTargets = nonForkRepos;
   const languageTotals = {};
   for (const repo of languageTargets) {
     try {
