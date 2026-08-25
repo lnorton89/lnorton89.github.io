@@ -1,6 +1,6 @@
 "use client";
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { motion } from "framer-motion";
 import { Code2 } from "lucide-react";
 import { languageColor } from "@/lib/format";
@@ -21,6 +21,7 @@ export default function LanguageBreakdown({
     name,
     value: bytes,
     pct: total > 0 ? ((bytes / total) * 100).toFixed(1) : "0",
+    pctValue: total > 0 ? (bytes / total) * 100 : 0,
   }));
 
   return (
@@ -56,30 +57,21 @@ export default function LanguageBreakdown({
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="h-[150px] w-[150px] shrink-0"
+                className="h-[250px] min-w-0 flex-1"
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={data}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={44}
-                      outerRadius={68}
-                      paddingAngle={2}
-                      stroke="none"
-                    >
-                      {data.map((d) => (
-                        <Cell
-                          key={d.name}
-                          fill={languageColor(d.name)}
-                          opacity={selectedLanguage && selectedLanguage !== d.name ? 0.25 : 1}
-                          onClick={() => setSelectedLanguage(selectedLanguage === d.name ? null : d.name)}
-                          cursor="pointer"
-                        />
-                      ))}
-                    </Pie>
+                  <BarChart data={data} layout="vertical" margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+                    <XAxis type="number" domain={[0, "dataMax"]} hide />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={68}
+                      tick={{ fill: "#8b909b", fontSize: 10, fontFamily: "var(--font-mono)" }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
                     <Tooltip
+                      cursor={{ fill: "rgba(61,218,215,0.06)" }}
                       contentStyle={{
                         background: "#191c21",
                         border: "1px solid #24272e",
@@ -87,13 +79,22 @@ export default function LanguageBreakdown({
                         fontSize: 12,
                         fontFamily: "var(--font-mono)",
                       }}
-                      labelStyle={{ color: "#e8e6e1" }}
-                      formatter={(value, name) => [
-                        `${((Number(value) / total) * 100).toFixed(1)}%`,
+                      formatter={(value, name, item) => [
+                        `${Number(item.payload.pct).toFixed(1)}%`,
                         String(name),
                       ]}
                     />
-                  </PieChart>
+                    <Bar dataKey="pctValue" radius={[0, 4, 4, 0]} barSize={10} cursor="pointer">
+                      {data.map((d) => (
+                        <Cell
+                          key={d.name}
+                          fill={languageColor(d.name)}
+                          opacity={selectedLanguage && selectedLanguage !== d.name ? 0.25 : 1}
+                          onClick={() => setSelectedLanguage(selectedLanguage === d.name ? null : d.name)}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               </motion.div>
               <ul className="min-w-0 flex-1 space-y-1.5">
