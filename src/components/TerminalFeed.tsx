@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Activity, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { useLiveDataStore } from "@/store/live-data-store";
 import { relativeTime } from "@/lib/format";
@@ -110,11 +110,13 @@ function Line({
   index,
   expanded,
   onToggle,
+  hydrated,
 }: {
   item: GroupedFeedItem;
   index: number;
   expanded: boolean;
   onToggle: () => void;
+  hydrated: boolean;
 }) {
   const typeLabel = TYPE_LABEL[item.type] ?? item.type.replace("Event", "").toLowerCase();
   const rowRef = useRef<HTMLLIElement>(null);
@@ -163,7 +165,7 @@ function Line({
           </span>
         )}
         <span className="ml-auto shrink-0 whitespace-nowrap font-mono text-[11px] text-text-faint">
-          {relativeTime(item.createdAt)}
+          {hydrated ? relativeTime(item.createdAt) : "recently"}
         </span>
       </button>
       <AnimatePresence initial={false}>
@@ -195,7 +197,7 @@ function Line({
                       <DetailEntry
                         key={activity.id}
                         href={activity.url ?? `https://github.com/${activity.repo}`}
-                        prefix={relativeTime(activity.createdAt)}
+                        prefix={hydrated ? relativeTime(activity.createdAt) : "recently"}
                       >
                         {activity.detail || activity.summary}
                       </DetailEntry>
@@ -215,6 +217,11 @@ export default function TerminalFeed({ base }: { base: GithubSnapshot }) {
   const items = groupByRepository(data.feed).slice(0, 24);
   const repositoryCount = new Set(data.feed.map((item) => item.repo)).size;
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const hydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   return (
     <div className="overflow-hidden rounded-lg border border-hairline bg-surface/80 shadow-[0_12px_40px_rgba(0,0,0,0.18)] backdrop-blur-sm">
@@ -251,6 +258,7 @@ export default function TerminalFeed({ base }: { base: GithubSnapshot }) {
               item={item}
               index={i}
               expanded={expandedId === item.id}
+              hydrated={hydrated}
               onToggle={() => setExpandedId((current) => (current === item.id ? null : item.id))}
             />
           ))}

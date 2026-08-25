@@ -45,6 +45,7 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
             alt={profile.login}
             width={44}
             height={44}
+            loading="eager"
             className="rounded-full border border-hairline"
             unoptimized
           />
