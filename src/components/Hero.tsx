@@ -114,7 +114,7 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
               <div key={s.label} className="min-w-0">
                 <div className="mb-1 flex items-center gap-2 text-text-faint">
                   <s.icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  <span className="truncate font-mono text-[11px] tracking-wide">{s.label}</span>
+                  <span className="font-mono text-[10px] leading-tight tracking-wide text-text-faint">{s.label}</span>
                 </div>
                 <div className="font-display text-3xl font-semibold text-text tabular-nums">
                   {compactNumber(s.value)}
