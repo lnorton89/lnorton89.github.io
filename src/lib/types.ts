@@ -28,6 +28,7 @@ export interface RepoSummary {
   topics: string[];
   visibility: string;
   languages?: Record<string, number>;
+  languageFiles?: Record<string, number>;
 }
 
 export interface PinnedRepo {

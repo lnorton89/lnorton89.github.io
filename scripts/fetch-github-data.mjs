@@ -46,6 +46,24 @@ const headers = {
 };
 
 const repoLanguages = {};
+const repoLanguageFiles = {};
+
+function languageFromPath(filePath) {
+  const name = filePath.split("/").pop().toLowerCase();
+  const extension = name.includes(".") ? name.slice(name.lastIndexOf(".")) : "";
+  const extensions = {
+    ".ts": "TypeScript", ".tsx": "TypeScript", ".js": "JavaScript", ".jsx": "JavaScript",
+    ".go": "Go", ".rs": "Rust", ".py": "Python", ".html": "HTML", ".htm": "HTML",
+    ".css": "CSS", ".scss": "CSS", ".cpp": "C++", ".cc": "C++", ".cxx": "C++",
+    ".cs": "C#", ".c": "C", ".ps1": "PowerShell", ".psm1": "PowerShell",
+    ".sh": "Shell", ".bash": "Shell", ".cmake": "CMake", ".nix": "Nix",
+    ".vb": "VBScript", ".vbs": "VBScript", ".md": "Markdown",
+  };
+  if (extensions[extension]) return extensions[extension];
+  if (name === "dockerfile") return "Dockerfile";
+  if (name === "makefile") return "Makefile";
+  return null;
+}
 
 async function rest(pathname, params = {}) {
   const url = new URL(REST + pathname);
@@ -103,6 +121,19 @@ async function main() {
     try {
       const langs = await rest(`/repos/${USERNAME}/${repo.name}/languages`);
       repoLanguages[repo.full_name] = langs;
+      try {
+        const tree = await rest(`/repos/${USERNAME}/${repo.name}/git/trees/${repo.default_branch}?recursive=1`);
+        const files = {};
+        for (const entry of tree.tree ?? []) {
+          if (entry.type !== "blob") continue;
+          const language = languageFromPath(entry.path);
+          if (language) files[language] = (files[language] || 0) + 1;
+        }
+        repoLanguageFiles[repo.full_name] = files;
+        if (tree.truncated) console.warn(`file tree truncated for ${repo.name}`);
+      } catch (err) {
+        console.warn(`file tree fetch failed for ${repo.name}:`, err.message);
+      }
       for (const [lang, bytes] of Object.entries(langs)) {
         languageTotals[lang] = (languageTotals[lang] || 0) + bytes;
       }
@@ -128,6 +159,7 @@ async function main() {
       topics: r.topics || [],
       visibility: r.visibility,
       languages: repoLanguages[r.full_name] || (r.language ? { [r.language]: 1 } : {}),
+      languageFiles: repoLanguageFiles[r.full_name] || {},
     }));
 
   const events = await rest(`/users/${USERNAME}/events/public`, { per_page: 50 });

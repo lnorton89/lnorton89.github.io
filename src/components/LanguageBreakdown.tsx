@@ -146,7 +146,9 @@ export default function LanguageBreakdown({
                       })()}
                       <span className="truncate text-text">{d.name}</span>
                       <span className="shrink-0 text-right font-mono text-text-faint">{d.pct}%</span>
-                      <span className="shrink-0 text-right font-mono text-text-faint">{d.filesEstimate.toLocaleString()}</span>
+                      <span className="shrink-0 text-right font-mono text-text-faint">
+                        {repos.reduce((sum, repo) => sum + (repo.languageFiles?.[d.name] ?? 0), 0).toLocaleString() || d.filesEstimate.toLocaleString()}
+                      </span>
                       <span className="h-2 overflow-hidden rounded-full bg-surface-raised" aria-hidden="true">
                         <span
                           className="block h-full rounded-full transition-[width,background-color,opacity]"
@@ -172,7 +174,7 @@ export default function LanguageBreakdown({
                     <span>{languageRepos(hoveredData.name).length} repositories</span>
                     <span>{hoveredData.value.toLocaleString()} bytes</span>
                   </div>
-                  <div className="mb-1.5 text-[9px] text-text-faint">estimated lines and files from byte totals</div>
+                  <div className="mb-1.5 text-[9px] text-text-faint">files are counted from repository trees; lines are estimated</div>
                   <div className="space-y-1">
                     {languageRepos(hoveredData.name).map(({ repo, bytes }) => (
                       <div key={repo.fullName} className="min-w-0">
@@ -188,7 +190,7 @@ export default function LanguageBreakdown({
                         </div>
                         <div className="flex items-center gap-2 text-[9px] text-text-faint">
                           <span className="inline-flex items-center gap-1"><ListTree className="h-2.5 w-2.5" aria-hidden="true" />~{Math.max(1, Math.round(bytes / 45)).toLocaleString()} lines</span>
-                          <span className="inline-flex items-center gap-1"><Files className="h-2.5 w-2.5" aria-hidden="true" />~{Math.max(1, Math.round(bytes / 4000)).toLocaleString()} files</span>
+                          <span className="inline-flex items-center gap-1"><Files className="h-2.5 w-2.5" aria-hidden="true" />{repo.languageFiles?.[hoveredData.name] ?? Math.max(1, Math.round(bytes / 4000)).toLocaleString()} files</span>
                         </div>
                       </div>
                     ))}
