@@ -62,7 +62,7 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="grid items-start gap-8 pb-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+        <div className="grid items-stretch gap-8 pb-14 lg:grid-cols-2">
           <PinnedRepos repos={data.pinnedRepos} />
           <LanguageBreakdown languageTotals={data.languageTotals} />
         </div>

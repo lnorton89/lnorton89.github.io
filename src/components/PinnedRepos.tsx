@@ -9,7 +9,7 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
   if (!repos?.length) return null;
 
   return (
-    <section>
+    <section className="h-full rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm">
       <div className="mb-4">
         <h2 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide text-text">
           <Pin className="h-4 w-4 text-amber" aria-hidden="true" />
@@ -62,6 +62,15 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
                 <GitFork className="h-3 w-3" aria-hidden="true" />
                 {compactNumber(repo.forkCount)}
               </span>
+            </div>
+            <div
+              className="flex h-1.5 w-full overflow-hidden rounded-full"
+              aria-label={repo.primaryLanguage ? `${repo.primaryLanguage.name} language` : "Language unavailable"}
+            >
+              <span
+                className="h-full w-full"
+                style={{ background: repo.primaryLanguage?.color ?? "var(--hairline)" }}
+              />
             </div>
           </motion.a>
         ))}

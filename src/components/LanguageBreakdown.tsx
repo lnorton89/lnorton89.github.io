@@ -24,7 +24,7 @@ export default function LanguageBreakdown({
 
   if (data.length === 0) {
     return (
-      <div className="rounded-lg border border-hairline bg-surface/80 p-5">
+      <div className="h-full rounded-lg border border-hairline bg-surface/80 p-5">
         <h3 className="mb-2 flex items-center gap-2 font-display text-sm font-semibold tracking-wide">
           <Code2 className="h-4 w-4 text-cyan" aria-hidden="true" />
           Languages
@@ -35,7 +35,7 @@ export default function LanguageBreakdown({
   }
 
   return (
-    <div className="rounded-lg border border-hairline bg-surface/80 backdrop-blur-sm p-5">
+    <div className="h-full rounded-lg border border-hairline bg-surface/80 backdrop-blur-sm p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide">
           <Code2 className="h-4 w-4 text-cyan" aria-hidden="true" />
