@@ -67,7 +67,6 @@ export async function fetchLiveSnapshot(
   const topRepos: RepoSummary[] = repos
     .filter((r) => !r.fork && !r.archived)
     .sort((a, b) => new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime())
-    .slice(0, 18)
     .map((r) => ({
       name: r.name,
       fullName: r.full_name,

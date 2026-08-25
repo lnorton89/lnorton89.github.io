@@ -107,7 +107,6 @@ async function main() {
 
   const topRepos = nonForkRepos
     .sort((a, b) => new Date(b.pushed_at) - new Date(a.pushed_at))
-    .slice(0, 18)
     .map((r) => ({
       name: r.name,
       fullName: r.full_name,
