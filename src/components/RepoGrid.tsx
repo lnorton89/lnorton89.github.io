@@ -135,6 +135,7 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.35, delay: i * 0.05 }}
           whileHover={{ y: -3, borderColor: "var(--cyan)" }}
+          whileTap={{ scale: 0.985 }}
           className={`group rounded-lg border border-hairline bg-surface/80 backdrop-blur-sm p-4 pb-3 flex flex-col gap-3 transition-[border-color,opacity,transform,background-color] ${
             selectedLanguage && !hasSelectedLanguage ? "opacity-45" : ""
           }`}

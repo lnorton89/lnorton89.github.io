@@ -31,6 +31,7 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
             viewport={{ once: true, margin: "-40px" }}
             transition={{ duration: 0.35, delay: index * 0.05 }}
             whileHover={{ y: -3, borderColor: "var(--cyan)" }}
+            whileTap={{ scale: 0.985 }}
             className="group flex flex-col gap-3 rounded-lg border border-hairline bg-surface/80 p-4 pb-3 backdrop-blur-sm transition-[border-color,opacity,transform,background-color] hover:bg-surface-raised/60"
           >
             <div>

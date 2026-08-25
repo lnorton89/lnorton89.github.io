@@ -1,6 +1,7 @@
 "use client";
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { motion } from "framer-motion";
 import { Code2 } from "lucide-react";
 import { languageColor } from "@/lib/format";
 import { useLiveDataStore } from "@/store/live-data-store";
@@ -50,7 +51,13 @@ export default function LanguageBreakdown({
               )}
             </div>
             <div className="flex items-center gap-4">
-              <div className="h-[150px] w-[150px] shrink-0">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.75, rotate: -12 }}
+                whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ type: "spring", stiffness: 180, damping: 18 }}
+                className="h-[150px] w-[150px] shrink-0"
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -88,10 +95,16 @@ export default function LanguageBreakdown({
                     />
                   </PieChart>
                 </ResponsiveContainer>
-              </div>
+              </motion.div>
               <ul className="min-w-0 flex-1 space-y-1.5">
-                {data.map((d) => (
-                  <li key={d.name}>
+                {data.map((d, index) => (
+                  <motion.li
+                    key={d.name}
+                    initial={{ opacity: 0, x: 12 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, margin: "-40px" }}
+                    transition={{ duration: 0.3, delay: index * 0.04 }}
+                  >
                     <button
                       type="button"
                       onClick={() => setSelectedLanguage(selectedLanguage === d.name ? null : d.name)}
@@ -104,7 +117,7 @@ export default function LanguageBreakdown({
                       <span className="truncate text-text">{d.name}</span>
                       <span className="ml-auto shrink-0 font-mono text-text-faint">{d.pct}%</span>
                     </button>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
             </div>
