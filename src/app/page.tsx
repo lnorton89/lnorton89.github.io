@@ -5,6 +5,7 @@ import ContributionHeatmap from "@/components/ContributionHeatmap";
 import LanguageBreakdown from "@/components/LanguageBreakdown";
 import CommitActivityChart from "@/components/CommitActivityChart";
 import RepositorySignals from "@/components/RepositorySignals";
+import ProjectTimeline from "@/components/ProjectTimeline";
 import RepoGrid from "@/components/RepoGrid";
 import PinnedRepos from "@/components/PinnedRepos";
 import SectionReveal from "@/components/SectionReveal";
@@ -71,6 +72,10 @@ export default function Home() {
 
         <SectionReveal className="pb-14">
           <RepositorySignals repos={data.topRepos} />
+        </SectionReveal>
+
+        <SectionReveal className="pb-14">
+          <ProjectTimeline repos={data.topRepos} />
         </SectionReveal>
 
         <SectionReveal className="pb-20">
