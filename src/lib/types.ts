@@ -47,6 +47,13 @@ export interface FeedItem {
   summary: string;
   detail?: string;
   url?: string;
+  commits?: FeedCommit[];
+}
+
+export interface FeedCommit {
+  sha: string;
+  message: string;
+  url?: string;
 }
 
 export interface WeeklyCommits {

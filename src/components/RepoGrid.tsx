@@ -10,8 +10,6 @@ import type { GithubSnapshot } from "@/lib/types";
 
 export default function RepoGrid({ base }: { base: GithubSnapshot }) {
   const live = useLiveDataStore((s) => s.liveSnapshot);
-  const selectedRepo = useLiveDataStore((s) => s.selectedRepo);
-  const setSelectedRepo = useLiveDataStore((s) => s.setSelectedRepo);
   const selectedLanguage = useLiveDataStore((s) => s.selectedLanguage);
   const setSelectedLanguage = useLiveDataStore((s) => s.setSelectedLanguage);
   const repos = (live ?? base).topRepos;
@@ -70,14 +68,8 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.35, delay: i * 0.05 }}
           whileHover={{ y: -3, borderColor: "var(--cyan)" }}
-          onPointerEnter={() => setSelectedRepo(repo.fullName)}
-          onPointerLeave={() => setSelectedRepo(null)}
-          onFocus={() => setSelectedRepo(repo.fullName)}
-          onBlur={() => setSelectedRepo(null)}
           className={`group rounded-lg border border-hairline bg-surface/80 backdrop-blur-sm p-4 pb-3 flex flex-col gap-3 transition-[border-color,opacity,transform,background-color] ${
-            selectedRepo && selectedRepo !== repo.fullName ? "opacity-45" : ""
-          } ${selectedLanguage && !hasSelectedLanguage ? "opacity-45" : ""} ${
-            selectedRepo === repo.fullName ? "border-cyan bg-cyan/5" : ""
+            selectedLanguage && !hasSelectedLanguage ? "opacity-45" : ""
           }`}
         >
           <div className="flex items-start justify-between gap-2">

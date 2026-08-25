@@ -93,6 +93,15 @@ export async function fetchLiveSnapshot(
     summary: summarize(e),
     detail: detail(e),
     url: eventUrl(e),
+    commits: e.type === "PushEvent"
+      ? ((e.payload.commits as Array<{ sha?: string; message?: string }> | undefined) ?? [])
+          .filter((commit) => commit.sha)
+          .map((commit) => ({
+            sha: commit.sha as string,
+            message: commit.message?.split("\n")[0] ?? "commit message unavailable",
+            url: e.repo?.name ? `https://github.com/${e.repo.name}/commit/${commit.sha}` : undefined,
+          }))
+      : undefined,
   }));
 
   const weeklyCommits = buildWeeklyCommits(events);

@@ -249,6 +249,13 @@ async function summarizeEvent(e) {
         }`,
         detail: commitMessage || "commit details unavailable",
         url: commitSha && e.repo?.name ? `https://github.com/${e.repo.name}/commit/${commitSha}` : undefined,
+        commits: (e.payload.commits?.length ? e.payload.commits : commitSha ? [{ sha: commitSha, message: commitMessage }] : []).map((commit) => ({
+          sha: commit.sha,
+          message: commit.message?.split("\n")[0] || "commit message unavailable",
+          url: e.repo?.name && commit.sha
+            ? `https://github.com/${e.repo.name}/commit/${commit.sha}`
+            : undefined,
+        })),
       };
     }
     case "PullRequestEvent":

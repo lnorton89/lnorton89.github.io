@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Activity, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { useLiveDataStore } from "@/store/live-data-store";
 import { relativeTime } from "@/lib/format";
-import type { FeedItem, GithubSnapshot } from "@/lib/types";
+import type { FeedCommit, FeedItem, GithubSnapshot } from "@/lib/types";
 
 const TYPE_LABEL: Record<string, string> = {
   PushEvent: "push",
@@ -34,36 +34,53 @@ const EVENT_LINK_LABEL: Record<string, string> = {
 
 type GroupedFeedItem = FeedItem & {
   activityCount: number;
-  isGroupStart: boolean;
+  activities: FeedItem[];
+  commits: FeedCommit[];
 };
 
 function groupByRepository(feed: FeedItem[]): GroupedFeedItem[] {
   const grouped = new Map<string, FeedItem[]>();
 
   for (const item of feed) {
-    const items = grouped.get(item.repo) ?? [];
+    const key = `${item.repo}:${item.type}`;
+    const items = grouped.get(key) ?? [];
     items.push(item);
-    grouped.set(item.repo, items);
+    grouped.set(key, items);
   }
 
-  const groups = Array.from(grouped.values());
-  const output: GroupedFeedItem[] = [];
-  for (let index = 0; output.length < 24; index += 1) {
-    let addedThisRound = false;
-    for (const items of groups) {
-      const item = items[index];
-      if (!item) continue;
-      output.push({
-        ...item,
-        activityCount: items.length,
-        isGroupStart: index === 0,
-      });
-      addedThisRound = true;
-      if (output.length === 24) break;
-    }
-    if (!addedThisRound) break;
-  }
-  return output;
+  return Array.from(grouped.values()).slice(0, 24).map((activities) => {
+    const first = activities[0];
+    const commits = activities.flatMap((activity) => activity.commits ?? []);
+    const activityCount = first.type === "PushEvent"
+      ? Math.max(commits.length, activities.length)
+      : activities.length;
+    return {
+      ...first,
+      id: activities.map((activity) => activity.id).join("-"),
+      createdAt: first.createdAt,
+      summary: groupedSummary(first, activityCount),
+      detail: first.detail,
+      url: first.url,
+      activityCount,
+      activities,
+      commits,
+    };
+  });
+}
+
+function groupedSummary(item: FeedItem, count: number): string {
+  if (count === 1) return item.summary;
+  if (item.type === "PushEvent") return `pushed ${count} commits`;
+
+  const action = item.summary.split(" ")[0];
+  const noun: Record<string, string> = {
+    PullRequestEvent: "pull requests",
+    IssuesEvent: "issues",
+    CreateEvent: "items",
+    ReleaseEvent: "releases",
+    WatchEvent: "stars",
+  };
+  return `${action} ${count} ${noun[item.type] ?? "events"}`;
 }
 
 function Line({
@@ -77,8 +94,6 @@ function Line({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const selectedRepo = useLiveDataStore((s) => s.selectedRepo);
-  const setSelectedRepo = useLiveDataStore((s) => s.setSelectedRepo);
   const typeLabel = TYPE_LABEL[item.type] ?? item.type.replace("Event", "").toLowerCase();
 
   return (
@@ -87,17 +102,11 @@ function Line({
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.35, delay: Math.min(index * 0.03, 0.4) }}
-      className={`group rounded-md border-b border-hairline/50 text-[13px] leading-relaxed transition-colors last:border-0 hover:bg-surface-raised/70 focus-within:bg-surface-raised/70 ${
-        selectedRepo && selectedRepo !== item.repo ? "opacity-45" : ""
-      } ${selectedRepo === item.repo ? "bg-cyan/5" : ""}`}
+      className="group rounded-md border-b border-hairline/50 text-[13px] leading-relaxed transition-colors last:border-0 hover:bg-surface-raised/70 focus-within:bg-surface-raised/70"
     >
       <button
         type="button"
         onClick={onToggle}
-        onPointerEnter={() => setSelectedRepo(item.repo)}
-        onPointerLeave={() => setSelectedRepo(null)}
-        onFocus={() => setSelectedRepo(item.repo)}
-        onBlur={() => setSelectedRepo(null)}
         aria-expanded={expanded}
         aria-controls={`activity-detail-${item.id}`}
         className="grid w-full min-w-0 grid-cols-[auto_auto_1fr_auto] items-center gap-2.5 px-2 py-2 text-left sm:flex"
@@ -113,11 +122,15 @@ function Line({
         <span className="col-start-2 min-w-0 max-w-full truncate text-text-muted transition-colors group-hover:text-text sm:max-w-[24%]">{item.repo}</span>
         <span className="col-span-3 col-start-2 min-w-0 truncate text-text sm:col-auto">
           {item.summary}
-          {item.detail && <span className="text-text-faint"> — {item.detail}</span>}
+          {item.type === "PushEvent" && item.commits.length > 0 ? (
+            <span className="text-text-faint"> — {item.commits.map((commit) => commit.sha.slice(0, 7)).join(", ")}</span>
+          ) : (
+            item.detail && <span className="text-text-faint"> — {item.detail}</span>
+          )}
         </span>
-        {item.isGroupStart && item.activityCount > 1 && (
+        {item.activityCount > 1 && (
           <span className="shrink-0 rounded border border-hairline px-1.5 py-0.5 font-mono text-[10px] text-text-faint">
-            {item.activityCount} repo events
+            {item.activityCount} {item.type === "PushEvent" ? "commits" : "events"}
           </span>
         )}
         <span className="ml-auto shrink-0 whitespace-nowrap font-mono text-[11px] text-text-faint">
@@ -138,10 +151,21 @@ function Line({
                 <span className="uppercase tracking-wide text-cyan">event detail</span>
                 <span className="whitespace-nowrap">{new Date(item.createdAt).toUTCString()}</span>
               </div>
-              <p className="mb-2 text-sm leading-relaxed text-text">{item.detail || item.summary}</p>
+              {item.type === "PushEvent" && item.commits.length > 0 ? (
+                <div className="mb-2 space-y-1.5">
+                  {item.commits.map((commit) => (
+                    <p key={commit.sha} className="text-sm leading-relaxed text-text">
+                      <span className="mr-2 text-cyan">{commit.sha.slice(0, 7)}</span>
+                      {commit.message}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="mb-2 text-sm leading-relaxed text-text">{item.detail || item.summary}</p>
+              )}
               <div className="grid gap-1.5 border-t border-hairline/60 pt-2 text-text-faint sm:grid-cols-2">
                 <span>type: <span className="text-text-muted">{typeLabel}</span></span>
-                <span>repo events: <span className="text-text-muted">{item.activityCount}</span></span>
+                <span>grouped activities: <span className="text-text-muted">{item.activities.length}</span></span>
                 <span className="truncate">event id: <span className="text-text-muted">{item.id}</span></span>
                 <a
                   href={item.url ?? `https://github.com/${item.repo}`}
