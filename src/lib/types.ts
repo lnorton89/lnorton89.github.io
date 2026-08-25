@@ -46,6 +46,7 @@ export interface FeedItem {
   createdAt: string;
   summary: string;
   detail?: string;
+  url?: string;
 }
 
 export interface WeeklyCommits {

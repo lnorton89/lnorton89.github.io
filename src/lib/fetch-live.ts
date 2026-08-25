@@ -91,6 +91,8 @@ export async function fetchLiveSnapshot(
     repo: e.repo?.name ?? "",
     createdAt: e.created_at,
     summary: summarize(e),
+    detail: detail(e),
+    url: eventUrl(e),
   }));
 
   const weeklyCommits = buildWeeklyCommits(events);
@@ -138,6 +140,47 @@ function summarize(e: { type: string; payload: Record<string, unknown> }): strin
     default:
       return e.type;
   }
+}
+
+function detail(e: { type: string; payload: Record<string, unknown> }): string {
+  const payload = e.payload;
+  switch (e.type) {
+    case "PushEvent": {
+      const commits = payload.commits as Array<{ message?: string }> | undefined;
+      const head = typeof payload.head === "string" ? payload.head : undefined;
+      return commits?.[commits.length - 1]?.message?.split("\n")[0]
+        ?? (head ? `commit ${head.slice(0, 7)}` : "push event with no commit details");
+    }
+    case "PullRequestEvent":
+      return ((payload.pull_request as { title?: string } | undefined)?.title) ?? "pull request activity";
+    case "IssuesEvent":
+      return ((payload.issue as { title?: string } | undefined)?.title) ?? "issue activity";
+    case "CreateEvent":
+      return String(payload.ref ?? payload.ref_type ?? "new repository activity");
+    case "ReleaseEvent":
+      return String((payload.release as { tag_name?: string } | undefined)?.tag_name ?? "release activity");
+    case "WatchEvent":
+      return "repository starred";
+    default:
+      return "public GitHub activity";
+  }
+}
+
+function eventUrl(e: { type: string; repo?: { name: string }; payload: Record<string, unknown> }): string | undefined {
+  const payload = e.payload;
+  if (e.type === "PushEvent" && typeof payload.head === "string" && e.repo?.name) {
+    return `https://github.com/${e.repo.name}/commit/${payload.head}`;
+  }
+  if (e.type === "PullRequestEvent") {
+    return (payload.pull_request as { html_url?: string } | undefined)?.html_url;
+  }
+  if (e.type === "IssuesEvent") {
+    return (payload.issue as { html_url?: string } | undefined)?.html_url;
+  }
+  if (e.type === "ReleaseEvent") {
+    return (payload.release as { html_url?: string } | undefined)?.html_url;
+  }
+  return undefined;
 }
 
 function buildWeeklyCommits(events: { type: string; created_at: string; payload: Record<string, unknown> }[]) {

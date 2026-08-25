@@ -126,14 +126,18 @@ async function main() {
     }));
 
   const events = await rest(`/users/${USERNAME}/events/public`, { per_page: 50 });
-  const feed = events
+  const feed = (
+    await Promise.all(
+      events
     .filter((e) =>
       ["PushEvent", "PullRequestEvent", "IssuesEvent", "CreateEvent", "ReleaseEvent", "WatchEvent"].includes(
         e.type
       )
     )
     .slice(0, 30)
-    .map((e) => summarizeEvent(e));
+        .map((e) => summarizeEvent(e))
+    )
+  );
 
   // Weekly commit counts for the last 52 weeks, derived from PushEvents (build-time
   // approximation — the events API only covers ~90 days; older weeks are backfilled
@@ -219,7 +223,7 @@ async function main() {
   );
 }
 
-function summarizeEvent(e) {
+async function summarizeEvent(e) {
   const base = {
     id: e.id,
     type: e.type,
@@ -227,25 +231,39 @@ function summarizeEvent(e) {
     createdAt: e.created_at,
   };
   switch (e.type) {
-    case "PushEvent":
+    case "PushEvent": {
+      const commitSha = e.payload.head;
+      let commitMessage = e.payload.commits?.[e.payload.commits.length - 1]?.message?.split("\n")[0];
+      if (!commitMessage && commitSha && e.repo?.name) {
+        try {
+          const commit = await rest(`/repos/${e.repo.name}/commits/${commitSha}`);
+          commitMessage = commit.commit?.message?.split("\n")[0];
+        } catch {
+          commitMessage = `commit ${commitSha.slice(0, 7)}`;
+        }
+      }
       return {
         ...base,
         summary: `pushed ${Math.max(1, e.payload.commits?.length ?? 0)} commit${
           Math.max(1, e.payload.commits?.length ?? 0) === 1 ? "" : "s"
         }`,
-        detail: e.payload.commits?.[e.payload.commits.length - 1]?.message?.split("\n")[0],
+        detail: commitMessage || "commit details unavailable",
+        url: commitSha && e.repo?.name ? `https://github.com/${e.repo.name}/commit/${commitSha}` : undefined,
       };
+    }
     case "PullRequestEvent":
       return {
         ...base,
         summary: `${e.payload.action} a pull request`,
         detail: e.payload.pull_request?.title,
+        url: e.payload.pull_request?.html_url,
       };
     case "IssuesEvent":
       return {
         ...base,
         summary: `${e.payload.action} an issue`,
         detail: e.payload.issue?.title,
+        url: e.payload.issue?.html_url,
       };
     case "CreateEvent":
       return {
@@ -258,6 +276,7 @@ function summarizeEvent(e) {
         ...base,
         summary: `${e.payload.action} a release`,
         detail: e.payload.release?.tag_name,
+        url: e.payload.release?.html_url,
       };
     case "WatchEvent":
       return { ...base, summary: "starred", detail: e.repo?.name };
