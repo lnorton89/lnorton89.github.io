@@ -2,7 +2,7 @@
 
 import { motion, type Variants } from "framer-motion";
 import Image from "next/image";
-import { MapPin, Building2, Link as LinkIcon, FolderGit2, Users, Activity } from "lucide-react";
+import { MapPin, Building2, Link as LinkIcon, FolderGit2, Users, Activity, CalendarDays } from "lucide-react";
 import TerminalFeed from "@/components/TerminalFeed";
 import LiveSync from "@/components/LiveSync";
 import { compactNumber } from "@/lib/format";
@@ -24,6 +24,7 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
   const stats = [
     { label: "Public repositories", value: profile.publicRepos, icon: FolderGit2 },
     { label: "Followers", value: profile.followers, icon: Users },
+    { label: "Following", value: profile.following, icon: Users },
     ...(contributions
       ? [{ label: "Contributions / year", value: contributions.contributionCalendar.totalContributions, icon: Activity }]
       : []),
@@ -92,6 +93,10 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
               <LinkIcon className="h-3.5 w-3.5" /> {profile.blog.replace(/^https?:\/\//, "")}
             </a>
           )}
+          <span className="flex items-center gap-1.5">
+            <CalendarDays className="h-3.5 w-3.5" />
+            Since {new Date(profile.createdAt).getUTCFullYear()}
+          </span>
         </motion.div>
         </div>
 

@@ -5,6 +5,7 @@ import ContributionHeatmap from "@/components/ContributionHeatmap";
 import LanguageBreakdown from "@/components/LanguageBreakdown";
 import CommitActivityChart from "@/components/CommitActivityChart";
 import RepoGrid from "@/components/RepoGrid";
+import PinnedRepos from "@/components/PinnedRepos";
 import { Activity, FolderGit2 } from "lucide-react";
 import type { GithubSnapshot } from "@/lib/types";
 
@@ -60,6 +61,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <PinnedRepos repos={data.pinnedRepos} />
 
         <section className="pb-14">
           <LanguageBreakdown languageTotals={data.languageTotals} />
