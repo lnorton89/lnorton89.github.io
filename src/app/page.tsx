@@ -65,7 +65,7 @@ export default function Home() {
 
         <SectionReveal className="grid items-stretch gap-8 pb-14 lg:grid-cols-2">
           <PinnedRepos repos={data.pinnedRepos} />
-          <LanguageBreakdown languageTotals={data.languageTotals} />
+          <LanguageBreakdown languageTotals={data.languageTotals} repos={data.topRepos} />
         </SectionReveal>
 
         <SectionReveal className="pb-20">

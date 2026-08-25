@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { Code2 } from "lucide-react";
 import type { IconType } from "react-icons";
 import {
@@ -21,6 +22,7 @@ import {
 } from "react-icons/si";
 import { languageColor } from "@/lib/format";
 import { useLiveDataStore } from "@/store/live-data-store";
+import type { RepoSummary } from "@/lib/types";
 
 const LANGUAGE_ICONS: Record<string, IconType> = {
   C: SiC,
@@ -41,11 +43,14 @@ const LANGUAGE_ICONS: Record<string, IconType> = {
 
 export default function LanguageBreakdown({
   languageTotals,
+  repos,
 }: {
   languageTotals: Record<string, number>;
+  repos: RepoSummary[];
 }) {
   const selectedLanguage = useLiveDataStore((s) => s.selectedLanguage);
   const setSelectedLanguage = useLiveDataStore((s) => s.setSelectedLanguage);
+  const [hoveredLanguage, setHoveredLanguage] = useState<string | null>(null);
   const allEntries = Object.entries(languageTotals)
     .sort((a, b) => b[1] - a[1])
   const entries = allEntries;
@@ -57,6 +62,11 @@ export default function LanguageBreakdown({
     pctValue: total > 0 ? (bytes / total) * 100 : 0,
     chartValue: total > 0 ? Math.max((bytes / total) * 100, 0.35) : 0,
   }));
+  const languageRepos = (language: string) =>
+    repos
+      .map((repo) => ({ repo, bytes: repo.languages?.[language] ?? 0 }))
+      .filter(({ bytes }) => bytes > 0)
+      .sort((a, b) => b.bytes - a.bytes);
 
   return (
     <section className="flex h-full flex-col">
@@ -93,6 +103,11 @@ export default function LanguageBreakdown({
                     whileInView={{ opacity: 1 }}
                     viewport={{ once: true, margin: "-40px" }}
                     transition={{ duration: 0.3, delay: index * 0.04 }}
+                    onMouseEnter={() => setHoveredLanguage(d.name)}
+                    onMouseLeave={() => setHoveredLanguage(null)}
+                    onFocus={() => setHoveredLanguage(d.name)}
+                    onBlur={() => setHoveredLanguage(null)}
+                    className="relative"
                   >
                     <button
                       type="button"
@@ -119,6 +134,27 @@ export default function LanguageBreakdown({
                         />
                       </span>
                     </button>
+                    {hoveredLanguage === d.name && (
+                      <div
+                        role="tooltip"
+                        className="pointer-events-none absolute right-0 top-full z-20 mt-1 w-64 rounded-md border border-hairline bg-surface-raised px-3 py-2.5 font-mono text-[10px] text-text shadow-xl"
+                      >
+                        <div className="mb-1.5 flex items-center justify-between gap-3 text-text-muted">
+                          <span>{languageRepos(d.name).length} repositories</span>
+                          <span>{d.value.toLocaleString()} bytes</span>
+                        </div>
+                        <div className="space-y-1">
+                          {languageRepos(d.name).slice(0, 4).map(({ repo, bytes }) => (
+                            <div key={repo.fullName} className="flex items-center justify-between gap-3">
+                              <span className="truncate">{repo.name}</span>
+                              <span className="shrink-0 text-text-faint">
+                                {((bytes / d.value) * 100).toFixed(1)}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </motion.li>
                 ))}
             </ul>
