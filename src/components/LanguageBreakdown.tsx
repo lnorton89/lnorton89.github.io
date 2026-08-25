@@ -1,6 +1,7 @@
 "use client";
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { Code2 } from "lucide-react";
 import { languageColor } from "@/lib/format";
 
 export default function LanguageBreakdown({
@@ -21,7 +22,8 @@ export default function LanguageBreakdown({
   if (data.length === 0) {
     return (
       <div className="rounded-lg border border-hairline bg-surface/80 p-5">
-        <h3 className="font-display text-sm font-semibold tracking-wide uppercase mb-2">
+        <h3 className="mb-2 flex items-center gap-2 font-display text-sm font-semibold tracking-wide uppercase">
+          <Code2 className="h-4 w-4 text-cyan" aria-hidden="true" />
           Languages
         </h3>
         <p className="text-sm text-text-faint font-mono">no language data available</p>
@@ -31,7 +33,8 @@ export default function LanguageBreakdown({
 
   return (
     <div className="rounded-lg border border-hairline bg-surface/80 backdrop-blur-sm p-5">
-      <h3 className="font-display text-sm font-semibold tracking-wide uppercase mb-4">
+      <h3 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold tracking-wide uppercase">
+        <Code2 className="h-4 w-4 text-cyan" aria-hidden="true" />
         Languages in play
       </h3>
       <div className="flex items-center gap-4">

@@ -5,6 +5,7 @@ import ContributionHeatmap from "@/components/ContributionHeatmap";
 import LanguageBreakdown from "@/components/LanguageBreakdown";
 import CommitActivityChart from "@/components/CommitActivityChart";
 import RepoGrid from "@/components/RepoGrid";
+import { FolderGit2 } from "lucide-react";
 import type { GithubSnapshot } from "@/lib/types";
 
 function loadSnapshot(): GithubSnapshot | null {
@@ -50,7 +51,8 @@ export default function Home() {
 
         <section className="pb-20">
           <div className="flex items-baseline justify-between mb-4">
-            <h2 className="font-display text-sm font-semibold tracking-wide uppercase text-text">
+            <h2 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide uppercase text-text">
+              <FolderGit2 className="h-4 w-4 text-cyan" aria-hidden="true" />
               Recently active repositories
             </h2>
             <a

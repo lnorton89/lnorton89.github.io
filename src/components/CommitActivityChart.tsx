@@ -1,6 +1,7 @@
 "use client";
 
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
+import { TrendingUp } from "lucide-react";
 import type { WeeklyCommits } from "@/lib/types";
 
 export default function CommitActivityChart({ weekly }: { weekly: WeeklyCommits[] }) {
@@ -10,7 +11,8 @@ export default function CommitActivityChart({ weekly }: { weekly: WeeklyCommits[
   return (
     <div className="rounded-lg border border-hairline bg-surface/80 backdrop-blur-sm p-5">
       <div className="flex items-baseline justify-between mb-3">
-        <h3 className="font-display text-sm font-semibold tracking-wide uppercase">
+        <h3 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide uppercase">
+          <TrendingUp className="h-4 w-4 text-amber" aria-hidden="true" />
           Commit velocity
         </h3>
         <span className="font-mono text-xs text-text-muted">{totalRecent} in last 16 weeks</span>

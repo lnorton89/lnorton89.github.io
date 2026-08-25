@@ -2,7 +2,7 @@
 
 import { motion, type Variants } from "framer-motion";
 import Image from "next/image";
-import { MapPin, Building2, Link as LinkIcon } from "lucide-react";
+import { MapPin, Building2, Link as LinkIcon, FolderGit2, Users, Activity } from "lucide-react";
 import TerminalFeed from "@/components/TerminalFeed";
 import LiveSync from "@/components/LiveSync";
 import { compactNumber } from "@/lib/format";
@@ -22,10 +22,10 @@ const item: Variants = {
 export default function Hero({ data }: { data: GithubSnapshot }) {
   const { profile, contributions } = data;
   const stats = [
-    { label: "public repos", value: profile.publicRepos },
-    { label: "followers", value: profile.followers },
+    { label: "public repos", value: profile.publicRepos, icon: FolderGit2 },
+    { label: "followers", value: profile.followers, icon: Users },
     ...(contributions
-      ? [{ label: "contributions / yr", value: contributions.contributionCalendar.totalContributions }]
+      ? [{ label: "contributions / yr", value: contributions.contributionCalendar.totalContributions, icon: Activity }]
       : []),
   ];
 
@@ -91,11 +91,12 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
         <motion.div variants={item} className="mt-8 flex flex-wrap gap-8">
           {stats.map((s) => (
             <div key={s.label}>
+              <div className="mb-1 flex items-center gap-2 text-text-faint">
+                <s.icon className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="font-mono text-[11px] uppercase tracking-wide">{s.label}</span>
+              </div>
               <div className="font-display text-3xl font-semibold text-text tabular-nums">
                 {compactNumber(s.value)}
-              </div>
-              <div className="font-mono text-[11px] text-text-faint uppercase tracking-wide mt-1">
-                {s.label}
               </div>
             </div>
           ))}
