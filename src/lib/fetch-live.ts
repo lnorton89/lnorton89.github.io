@@ -64,6 +64,25 @@ export async function fetchLiveSnapshot(
     get<RestEvent[]>(`/users/${username}/events/public?per_page=30`),
   ]);
 
+  const languageResults = await Promise.all(
+    repos
+      .filter((repo) => !repo.fork && !repo.archived)
+      .map(async (repo) => {
+        try {
+          return [repo.full_name, await get<Record<string, number>>(`/repos/${repo.full_name}/languages`)] as const;
+        } catch {
+          return [repo.full_name, {}] as const;
+        }
+      })
+  );
+  const liveLanguages = new Map(languageResults);
+  const languageTotals = languageResults.reduce<Record<string, number>>((totals, [, languages]) => {
+    for (const [language, bytes] of Object.entries(languages)) {
+      totals[language] = (totals[language] ?? 0) + bytes;
+    }
+    return totals;
+  }, {});
+
   const topRepos: RepoSummary[] = repos
     .filter((r) => !r.fork && !r.archived)
     .sort((a, b) => new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime())
@@ -81,7 +100,7 @@ export async function fetchLiveSnapshot(
       createdAt: r.created_at,
       topics: r.topics || [],
       visibility: r.visibility,
-      languages: r.language ? { [r.language]: 1 } : {},
+      languages: liveLanguages.get(r.full_name) ?? (r.language ? { [r.language]: 1 } : {}),
     }));
 
   const feed: FeedItem[] = await Promise.all(events.slice(0, 30).map(async (e) => ({
@@ -122,6 +141,7 @@ export async function fetchLiveSnapshot(
       createdAt: profile.created_at,
       htmlUrl: profile.html_url,
     },
+    languageTotals,
     topRepos,
     feed,
     weeklyCommits,
