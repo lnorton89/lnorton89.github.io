@@ -25,13 +25,6 @@ const TYPE_BADGE: Record<string, string> = {
   WatchEvent: "border-amber/30 bg-amber/10 text-amber",
 };
 
-const EVENT_LINK_LABEL: Record<string, string> = {
-  PushEvent: "commit",
-  PullRequestEvent: "PR",
-  IssuesEvent: "issue",
-  ReleaseEvent: "release",
-};
-
 type GroupedFeedItem = FeedItem & {
   activityCount: number;
   activities: FeedItem[];
@@ -194,20 +187,6 @@ function Line({
                         {activity.detail || activity.summary}
                       </DetailEntry>
                     ))}
-              </div>
-              <div className="grid gap-1.5 border-t border-hairline/60 pt-2 text-text-faint sm:grid-cols-2">
-                <span>type: <span className="text-text-muted">{typeLabel}</span></span>
-                <span>grouped activities: <span className="text-text-muted">{item.activities.length}</span></span>
-                <span className="truncate">latest event: <span className="text-text-muted">{item.activities[0].id}</span></span>
-                <a
-                  href={item.url ?? `https://github.com/${item.repo}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-cyan transition-colors hover:text-text"
-                >
-                  view {item.url ? EVENT_LINK_LABEL[item.type] ?? "event" : "repository"}{" "}
-                  <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                </a>
               </div>
             </div>
           </motion.div>
