@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Activity } from "lucide-react";
 import type { ContributionsCollection, WeeklyCommits } from "@/lib/types";
 
 function intensity(count: number, max: number): number {
@@ -83,8 +82,7 @@ export default function ContributionHeatmap({
   return (
     <div className={`min-w-0 ${embedded ? "" : "rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm"}`}>
       <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
-        <h3 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide text-text">
-          <Activity className="h-4 w-4 text-amber" aria-hidden="true" />
+        <h3 className="font-display text-sm font-semibold tracking-wide text-text">
           Contribution pulse
         </h3>
         <span className="font-mono text-xs text-text-muted">
