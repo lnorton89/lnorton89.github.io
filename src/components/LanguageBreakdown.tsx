@@ -2,6 +2,7 @@
 
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { Code2 } from "lucide-react";
 import type { IconType } from "react-icons";
 import {
@@ -47,6 +48,7 @@ export default function LanguageBreakdown({
 }) {
   const selectedLanguage = useLiveDataStore((s) => s.selectedLanguage);
   const setSelectedLanguage = useLiveDataStore((s) => s.setSelectedLanguage);
+  const [hoveredLanguage, setHoveredLanguage] = useState<string | null>(null);
   const allEntries = Object.entries(languageTotals)
     .sort((a, b) => b[1] - a[1])
   const entries = allEntries;
@@ -106,7 +108,7 @@ export default function LanguageBreakdown({
                       axisLine={false}
                     />
                     <Tooltip
-                      cursor={{ fill: "rgba(61,218,215,0.06)" }}
+                      cursor={false}
                       contentStyle={{
                         background: "#191c21",
                         border: "1px solid #24272e",
@@ -123,8 +125,10 @@ export default function LanguageBreakdown({
                       {data.map((d) => (
                         <Cell
                           key={d.name}
-                          fill={languageColor(d.name)}
+                          fill={hoveredLanguage === d.name ? "var(--cyan)" : languageColor(d.name)}
                           opacity={selectedLanguage && selectedLanguage !== d.name ? 0.25 : 1}
+                          onMouseEnter={() => setHoveredLanguage(d.name)}
+                          onMouseLeave={() => setHoveredLanguage(null)}
                           onClick={() => setSelectedLanguage(selectedLanguage === d.name ? null : d.name)}
                         />
                       ))}
