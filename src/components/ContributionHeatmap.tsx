@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ContributionsCollection, WeeklyCommits } from "@/lib/types";
 
 function intensity(count: number, max: number): number {
@@ -32,6 +32,13 @@ export default function ContributionHeatmap({
   contributions: ContributionsCollection | null;
   weeklyFallback: WeeklyCommits[];
 }) {
+  const [hovered, setHovered] = useState<{ label: string; x: number; y: number } | null>(null);
+
+  function showTooltip(element: HTMLElement, label: string) {
+    const rect = element.getBoundingClientRect();
+    setHovered({ label, x: rect.left + rect.width / 2, y: rect.top });
+  }
+
   const grid = useMemo(() => {
     if (contributions) {
       const weeks = contributions.contributionCalendar.weeks;
@@ -83,7 +90,13 @@ export default function ContributionHeatmap({
             {col.map((cell, ri) => (
               <motion.div
                 key={cell.key}
-                title={cell.label}
+                role="gridcell"
+                tabIndex={0}
+                aria-label={cell.label}
+                onPointerEnter={(event) => showTooltip(event.currentTarget, cell.label)}
+                onPointerLeave={() => setHovered(null)}
+                onFocus={(event) => showTooltip(event.currentTarget, cell.label)}
+                onBlur={() => setHovered(null)}
                 initial={{ opacity: 0, scale: 0.4 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true, margin: "-40px" }}
@@ -94,6 +107,15 @@ export default function ContributionHeatmap({
           </div>
         ))}
       </div>
+      {hovered && (
+        <div
+          role="tooltip"
+          className="pointer-events-none fixed z-50 max-w-[220px] -translate-x-1/2 -translate-y-[calc(100%+8px)] rounded-md border border-hairline bg-surface-raised px-2.5 py-1.5 text-center font-mono text-[11px] text-text shadow-lg"
+          style={{ left: hovered.x, top: hovered.y }}
+        >
+          {hovered.label}
+        </div>
+      )}
       <div className="flex items-center gap-1.5 mt-3 justify-end">
         <span className="font-mono text-[11px] text-text-faint mr-1">less</span>
         {CELL_STYLES.map((style, i) => (
