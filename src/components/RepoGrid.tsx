@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Star, GitFork, ExternalLink } from "lucide-react";
 import { useLiveDataStore } from "@/store/live-data-store";
 import { languageColor, relativeTime, compactNumber } from "@/lib/format";
@@ -11,7 +12,22 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
   const live = useLiveDataStore((s) => s.liveSnapshot);
   const repos = (live ?? base).topRepos;
   const [visibleCount, setVisibleCount] = useState(9);
+  const [hoveredLanguage, setHoveredLanguage] = useState<{
+    key: string;
+    label: string;
+    x: number;
+    y: number;
+  } | null>(null);
   const visibleRepos = repos.slice(0, visibleCount);
+
+  function showLanguageTooltip(
+    key: string,
+    label: string,
+    x: number,
+    y: number
+  ) {
+    setHoveredLanguage({ key, label, x: x + 12, y: y - 12 });
+  }
 
   return (
     <div>
@@ -66,9 +82,46 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
             {languages.map(([language, bytes]) => (
               <span
                 key={language}
-                title={`${language} ${((bytes / languageTotal) * 100).toFixed(1)}%`}
-                className="h-full"
-                style={{ width: `${(bytes / languageTotal) * 100}%`, background: languageColor(language) }}
+                role="img"
+                tabIndex={0}
+                aria-label={`${language} ${((bytes / languageTotal) * 100).toFixed(1)}%`}
+                onPointerEnter={(event) =>
+                  showLanguageTooltip(
+                    `${repo.fullName}:${language}`,
+                    `${language} ${((bytes / languageTotal) * 100).toFixed(1)}%`,
+                    event.clientX,
+                    event.clientY
+                  )
+                }
+                onPointerMove={(event) =>
+                  showLanguageTooltip(
+                    `${repo.fullName}:${language}`,
+                    `${language} ${((bytes / languageTotal) * 100).toFixed(1)}%`,
+                    event.clientX,
+                    event.clientY
+                  )
+                }
+                onPointerLeave={() => setHoveredLanguage(null)}
+                onFocus={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  showLanguageTooltip(
+                    `${repo.fullName}:${language}`,
+                    `${language} ${((bytes / languageTotal) * 100).toFixed(1)}%`,
+                    rect.left + rect.width / 2,
+                    rect.top
+                  );
+                }}
+                onBlur={() => setHoveredLanguage(null)}
+                className={`h-full transition-[opacity,transform] ${
+                  hoveredLanguage && hoveredLanguage.key !== `${repo.fullName}:${language}`
+                    && hoveredLanguage.key.startsWith(`${repo.fullName}:`)
+                    ? "opacity-35"
+                    : "opacity-100"
+                } ${hoveredLanguage?.key === `${repo.fullName}:${language}` ? "scale-y-150" : ""}`}
+                style={{
+                  width: `${(bytes / languageTotal) * 100}%`,
+                  background: languageColor(language),
+                }}
               />
             ))}
           </div>
@@ -87,6 +140,18 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
           </button>
         </div>
       )}
+      {hoveredLanguage &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="tooltip"
+            className="pointer-events-none fixed z-50 max-w-[220px] -translate-y-full rounded-md border border-hairline bg-surface-raised px-2.5 py-1.5 text-center font-mono text-[11px] text-text shadow-lg"
+            style={{ left: hoveredLanguage.x, top: hoveredLanguage.y }}
+          >
+            {hoveredLanguage.label}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
