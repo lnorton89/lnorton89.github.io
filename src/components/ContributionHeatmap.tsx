@@ -125,8 +125,8 @@ export default function ContributionHeatmap({
                 onPointerLeave={() => setHovered(null)}
                 onFocus={(event) => showTooltipForFocus(event.currentTarget, cell.label)}
                 onBlur={() => setHovered(null)}
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
+                initial={{ opacity: 0, filter: "blur(3px)" }}
+                whileInView={{ opacity: 1, filter: "blur(0px)" }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{
                   duration: 0.22,

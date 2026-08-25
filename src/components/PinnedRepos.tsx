@@ -26,8 +26,8 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
             href={repo.url}
             target="_blank"
             rel="noopener noreferrer"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
+            initial={{ opacity: 0, scale: 0.98, filter: "blur(4px)" }}
+            whileInView={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
             viewport={{ once: true, margin: "-40px" }}
             transition={{ duration: 0.35, delay: index * 0.05 }}
             whileHover={{ y: -3, borderColor: "var(--cyan)" }}

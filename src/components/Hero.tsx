@@ -15,8 +15,8 @@ const stagger: Variants = {
   show: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
 };
 const item: Variants = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { duration: 0.5, ease: EASE_OUT } },
+  hidden: { opacity: 0, filter: "blur(6px)" },
+  show: { opacity: 1, filter: "blur(0px)", transition: { duration: 0.5, ease: EASE_OUT } },
 };
 
 export default function Hero({ data }: { data: GithubSnapshot }) {
