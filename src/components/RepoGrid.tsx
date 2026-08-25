@@ -130,8 +130,8 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
           href={repo.url}
           target="_blank"
           rel="noopener noreferrer"
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.35, delay: i * 0.05 }}
           whileHover={{ y: -3, borderColor: "var(--cyan)" }}
