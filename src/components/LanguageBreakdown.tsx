@@ -143,13 +143,19 @@ export default function LanguageBreakdown({
                           <span>{languageRepos(d.name).length} repositories</span>
                           <span>{d.value.toLocaleString()} bytes</span>
                         </div>
+                        <div className="mb-1.5 text-[9px] text-text-faint">estimated lines and files from byte totals</div>
                         <div className="space-y-1">
                           {languageRepos(d.name).slice(0, 4).map(({ repo, bytes }) => (
-                            <div key={repo.fullName} className="flex items-center justify-between gap-3">
-                              <span className="truncate">{repo.name}</span>
-                              <span className="shrink-0 text-text-faint">
-                                {((bytes / d.value) * 100).toFixed(1)}%
-                              </span>
+                            <div key={repo.fullName} className="min-w-0">
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="truncate">{repo.name}</span>
+                                <span className="shrink-0 text-text-faint">
+                                  {((bytes / d.value) * 100).toFixed(1)}%
+                                </span>
+                              </div>
+                              <div className="text-[9px] text-text-faint">
+                                ~{Math.max(1, Math.round(bytes / 45)).toLocaleString()} lines · ~{Math.max(1, Math.round(bytes / 4000)).toLocaleString()} files
+                              </div>
                             </div>
                           ))}
                         </div>
