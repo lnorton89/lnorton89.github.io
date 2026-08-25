@@ -6,6 +6,7 @@ import LanguageBreakdown from "@/components/LanguageBreakdown";
 import CommitActivityChart from "@/components/CommitActivityChart";
 import RepoGrid from "@/components/RepoGrid";
 import PinnedRepos from "@/components/PinnedRepos";
+import SectionReveal from "@/components/SectionReveal";
 import { Activity, FolderGit2 } from "lucide-react";
 import type { GithubSnapshot } from "@/lib/types";
 
@@ -38,7 +39,7 @@ export default function Home() {
       <div className="mx-auto max-w-6xl px-6">
         <Hero data={data} />
 
-        <section className="pb-10">
+        <SectionReveal className="pb-10">
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <h2 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide text-text">
@@ -60,14 +61,14 @@ export default function Home() {
             <CommitActivityChart weekly={data.weeklyCommits} embedded />
             </div>
           </div>
-        </section>
+        </SectionReveal>
 
-        <div className="grid items-stretch gap-8 pb-14 lg:grid-cols-2">
+        <SectionReveal className="grid items-stretch gap-8 pb-14 lg:grid-cols-2">
           <PinnedRepos repos={data.pinnedRepos} />
           <LanguageBreakdown languageTotals={data.languageTotals} />
-        </div>
+        </SectionReveal>
 
-        <section className="pb-20">
+        <SectionReveal className="pb-20">
           <div className="flex items-baseline justify-between mb-4">
             <h2 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide text-text">
               <FolderGit2 className="h-4 w-4 text-cyan" aria-hidden="true" />
@@ -83,7 +84,7 @@ export default function Home() {
             </a>
           </div>
           <RepoGrid base={data} />
-        </section>
+        </SectionReveal>
 
         <footer className="pb-16 pt-8 border-t border-hairline flex flex-wrap items-center justify-between gap-3 font-mono text-[11px] text-text-faint">
           <span>

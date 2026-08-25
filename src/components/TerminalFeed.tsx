@@ -71,7 +71,7 @@ function createGroupedItem(
 ): GroupedFeedItem {
   const first = activities[0];
   const activityCount = first.type === "PushEvent"
-    ? Math.max(commits.length, activities.length)
+    ? commits.length || activities.length
     : activities.length;
   return {
     ...first,
