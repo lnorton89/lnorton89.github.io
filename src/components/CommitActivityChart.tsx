@@ -1,11 +1,13 @@
 "use client";
 
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
+import { useState } from "react";
 import type { WeeklyCommits } from "@/lib/types";
 
 export default function CommitActivityChart({ weekly, embedded = false }: { weekly: WeeklyCommits[]; embedded?: boolean }) {
-  const recent = weekly.slice(-16);
-  const totalRecent = recent.reduce((s, w) => s + w.commits, 0);
+  const [windowWeeks, setWindowWeeks] = useState(16);
+  const visibleWeeks = weekly.slice(-windowWeeks);
+  const totalRecent = visibleWeeks.reduce((s, w) => s + w.commits, 0);
 
   return (
     <div className={`h-full ${embedded ? "lg:border-l lg:border-hairline lg:pl-6" : "rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm"}`}>
@@ -13,7 +15,24 @@ export default function CommitActivityChart({ weekly, embedded = false }: { week
         <h3 className="font-display text-sm font-semibold tracking-wide">
           Commit velocity
         </h3>
-        <span className="font-mono text-xs text-text-muted">{totalRecent} in last 16 weeks</span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <span className="font-mono text-xs text-text-muted">{totalRecent} in last {windowWeeks} weeks</span>
+          <div className="flex items-center rounded border border-hairline p-0.5" aria-label="Commit velocity time window">
+            {[4, 8, 16, 26, 52].map((weeks) => (
+              <button
+                key={weeks}
+                type="button"
+                onClick={() => setWindowWeeks(weeks)}
+                aria-pressed={windowWeeks === weeks}
+                className={`rounded px-1.5 py-1 font-mono text-[10px] transition-colors ${
+                  windowWeeks === weeks ? "bg-amber/15 text-amber" : "text-text-faint hover:text-text"
+                }`}
+              >
+                {weeks}w
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       {totalRecent === 0 ? (
         <p className="flex h-[120px] items-center justify-center text-center font-mono text-xs text-text-faint">
@@ -22,7 +41,7 @@ export default function CommitActivityChart({ weekly, embedded = false }: { week
       ) : (
       <div className="h-[120px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={recent} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+          <AreaChart data={visibleWeeks} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
             <defs>
               <linearGradient id="commitFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#3ddad7" stopOpacity={0.45} />

@@ -36,6 +36,7 @@ export default function ContributionHeatmap({
   embedded?: boolean;
 }) {
   const [hovered, setHovered] = useState<{ label: string; x: number; y: number } | null>(null);
+  const [windowWeeks, setWindowWeeks] = useState(52);
 
   function showTooltipAt(x: number, y: number, label: string) {
     setHovered({ label, x: x + 12, y: y - 12 });
@@ -48,7 +49,7 @@ export default function ContributionHeatmap({
 
   const grid = useMemo(() => {
     if (contributions) {
-      const weeks = contributions.contributionCalendar.weeks;
+      const weeks = contributions.contributionCalendar.weeks.slice(-windowWeeks);
       const max = Math.max(1, ...weeks.flatMap((w) => w.contributionDays.map((d) => d.contributionCount)));
       return {
         max,
@@ -61,10 +62,11 @@ export default function ContributionHeatmap({
         ),
       };
     }
-    const max = Math.max(1, ...weeklyFallback.map((w) => w.commits));
+    const weeks = weeklyFallback.slice(-windowWeeks);
+    const max = Math.max(1, ...weeks.map((w) => w.commits));
     return {
       max,
-      columns: weeklyFallback.map((w) => [
+      columns: weeks.map((w) => [
         ...Array.from({ length: 7 }, (_, weekday) => ({
           key: `${w.weekStart}-${weekday}`,
           count: weekday === 3 ? w.commits : 0,
@@ -75,9 +77,9 @@ export default function ContributionHeatmap({
         })),
       ]),
     };
-  }, [contributions, weeklyFallback]);
+  }, [contributions, weeklyFallback, windowWeeks]);
 
-  const total = contributions?.contributionCalendar.totalContributions;
+  const total = grid.columns.reduce((sum, column) => sum + column.reduce((columnTotal, cell) => columnTotal + cell.count, 0), 0);
 
   return (
     <div className={`min-w-0 ${embedded ? "" : "rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm"}`}>
@@ -85,11 +87,30 @@ export default function ContributionHeatmap({
         <h3 className="font-display text-sm font-semibold tracking-wide text-text">
           Contribution pulse
         </h3>
-        <span className="font-mono text-xs text-text-muted">
-          {total !== undefined
-            ? `${total.toLocaleString()} contributions, last 12 months`
-            : "Approximate — recent public push activity"}
-        </span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <span className="font-mono text-xs text-text-muted">
+            {contributions ? `${total.toLocaleString()} contributions` : "Approximate public push activity"}
+          </span>
+          <div className="flex items-center rounded border border-hairline p-0.5" aria-label="Contribution time window">
+            {[
+              { weeks: 13, label: "3m" },
+              { weeks: 26, label: "6m" },
+              { weeks: 52, label: "12m" },
+            ].map(({ weeks, label }) => (
+              <button
+                key={weeks}
+                type="button"
+                onClick={() => setWindowWeeks(weeks)}
+                aria-pressed={windowWeeks === weeks}
+                className={`rounded px-1.5 py-1 font-mono text-[10px] transition-colors ${
+                  windowWeeks === weeks ? "bg-amber/15 text-amber" : "text-text-faint hover:text-text"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <div
         role="grid"
