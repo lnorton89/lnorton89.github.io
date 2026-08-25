@@ -9,7 +9,7 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
   if (!repos?.length) return null;
 
   return (
-    <section className="h-full rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm">
+    <section>
       <div className="mb-4">
         <h2 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide text-text">
           <Pin className="h-4 w-4 text-amber" aria-hidden="true" />
