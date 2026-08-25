@@ -15,7 +15,7 @@ export default function LanguageBreakdown({
   const setSelectedLanguage = useLiveDataStore((s) => s.setSelectedLanguage);
   const allEntries = Object.entries(languageTotals)
     .sort((a, b) => b[1] - a[1])
-  const entries = allEntries.slice(0, 12);
+  const entries = allEntries;
   const total = entries.reduce((sum, [, bytes]) => sum + bytes, 0);
   const data = entries.map(([name, bytes]) => ({
     name,
@@ -24,7 +24,7 @@ export default function LanguageBreakdown({
   }));
 
   return (
-    <section>
+    <section className="flex h-full flex-col">
       <div className="mb-4">
         <h2 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide text-text">
           <Code2 className="h-4 w-4 text-cyan" aria-hidden="true" />
@@ -34,7 +34,7 @@ export default function LanguageBreakdown({
           the technologies behind the repositories
         </p>
       </div>
-      <div className="rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm">
+      <div className="flex-1 rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm">
         {data.length === 0 ? (
           <p className="text-sm font-mono text-text-faint">No language data available</p>
         ) : (
