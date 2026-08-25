@@ -52,10 +52,10 @@ export default function LanguageBreakdown({
             </div>
             <div className="flex items-center gap-4">
               <motion.div
-                initial={{ opacity: 0, scale: 0.75, rotate: -12 }}
-                whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
+                initial={{ opacity: 0, scale: 0.92 }}
+                whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true, margin: "-40px" }}
-                transition={{ type: "spring", stiffness: 180, damping: 18 }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 className="h-[150px] w-[150px] shrink-0"
               >
                 <ResponsiveContainer width="100%" height="100%">
