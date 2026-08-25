@@ -12,9 +12,9 @@ export default function LanguageBreakdown({
 }) {
   const selectedLanguage = useLiveDataStore((s) => s.selectedLanguage);
   const setSelectedLanguage = useLiveDataStore((s) => s.setSelectedLanguage);
-  const entries = Object.entries(languageTotals)
+  const allEntries = Object.entries(languageTotals)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 7);
+  const entries = allEntries.slice(0, 12);
   const total = entries.reduce((sum, [, bytes]) => sum + bytes, 0);
   const data = entries.map(([name, bytes]) => ({
     name,
@@ -108,6 +108,9 @@ export default function LanguageBreakdown({
                 ))}
               </ul>
             </div>
+            <p className="mt-4 border-t border-hairline/60 pt-3 font-mono text-[11px] text-text-faint">
+              showing {entries.length} of {allEntries.length} languages · {total.toLocaleString()} bytes represented
+            </p>
           </>
         )}
       </div>
