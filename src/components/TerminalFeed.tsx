@@ -32,8 +32,17 @@ type GroupedFeedItem = FeedItem & {
 };
 
 function groupByRepository(feed: FeedItem[]): GroupedFeedItem[] {
-  return feed.slice(0, 24).map((item) =>
-    createGroupedItem([item], item.commits ?? [])
+  const groups: FeedItem[][] = [];
+  for (const item of feed) {
+    const previous = groups[groups.length - 1];
+    if (previous && previous[0].repo === item.repo && previous[0].type === item.type) {
+      previous.push(item);
+    } else {
+      groups.push([item]);
+    }
+  }
+  return groups.slice(0, 24).map((activities) =>
+    createGroupedItem(activities, activities.flatMap((activity) => activity.commits ?? []))
   );
 }
 
