@@ -8,21 +8,34 @@ import { useLiveDataStore } from "@/store/live-data-store";
 import { languageColor, relativeTime, compactNumber } from "@/lib/format";
 import type { GithubSnapshot } from "@/lib/types";
 
+type RepoSort = "updated" | "stars" | "forks" | "name";
+
 export default function RepoGrid({ base }: { base: GithubSnapshot }) {
   const live = useLiveDataStore((s) => s.liveSnapshot);
   const selectedLanguage = useLiveDataStore((s) => s.selectedLanguage);
   const setSelectedLanguage = useLiveDataStore((s) => s.setSelectedLanguage);
   const repos = (live ?? base).topRepos;
   const [visibleCount, setVisibleCount] = useState(9);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<RepoSort>("updated");
   const [hoveredLanguage, setHoveredLanguage] = useState<{
     key: string;
     label: string;
     x: number;
     y: number;
   } | null>(null);
-  const filteredRepos = selectedLanguage
-    ? repos.filter((repo) => Object.keys(repo.languages ?? {}).includes(selectedLanguage))
-    : repos;
+  const filteredRepos = repos
+    .filter((repo) => {
+      const matchesLanguage = !selectedLanguage || Object.keys(repo.languages ?? {}).includes(selectedLanguage);
+      const haystack = [repo.name, repo.description ?? "", ...repo.topics].join(" ").toLowerCase();
+      return matchesLanguage && (!search.trim() || haystack.includes(search.trim().toLowerCase()));
+    })
+    .sort((a, b) => {
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (sortBy === "stars") return b.stars - a.stars;
+      if (sortBy === "forks") return b.forks - a.forks;
+      return new Date(b.pushedAt).getTime() - new Date(a.pushedAt).getTime();
+    });
   const visibleRepos = filteredRepos.slice(0, visibleCount);
 
   function showLanguageTooltip(
@@ -36,20 +49,46 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
 
   return (
     <div>
+      <div className="mb-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+        <label className="sr-only" htmlFor="repo-search">Filter repositories</label>
+        <input
+          id="repo-search"
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="filter repositories, topics..."
+          className="min-w-0 rounded border border-hairline bg-surface-raised/60 px-2.5 py-1.5 font-mono text-[11px] text-text placeholder:text-text-faint focus:border-cyan/60 focus:outline-none"
+        />
+        <label className="sr-only" htmlFor="repo-sort">Sort repositories</label>
+        <select
+          id="repo-sort"
+          value={sortBy}
+          onChange={(event) => setSortBy(event.target.value as RepoSort)}
+          className="rounded border border-hairline bg-surface-raised/60 px-2.5 py-1.5 font-mono text-[11px] text-text-muted focus:border-cyan/60 focus:outline-none"
+        >
+          <option value="updated">recently updated</option>
+          <option value="stars">most stars</option>
+          <option value="forks">most forks</option>
+          <option value="name">name A-Z</option>
+        </select>
+        {(selectedLanguage || search) && (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedLanguage(null);
+              setSearch("");
+            }}
+            className="rounded border border-hairline px-2 py-1.5 font-mono text-[11px] text-text-muted transition-colors hover:border-cyan/50 hover:text-cyan"
+          >
+            clear filters
+          </button>
+        )}
+      </div>
       <div className="mb-3 flex items-center justify-between gap-3 font-mono text-[11px] text-text-faint" aria-live="polite">
         <p>
           showing {visibleRepos.length} of {filteredRepos.length} repositories
-          {selectedLanguage && <span className="text-cyan"> · filtered by {selectedLanguage}</span>}
+          {selectedLanguage && <span className="text-cyan"> · {selectedLanguage}</span>}
         </p>
-        {selectedLanguage && (
-          <button
-            type="button"
-            onClick={() => setSelectedLanguage(null)}
-            className="shrink-0 rounded border border-hairline px-2 py-1 text-text-muted transition-colors hover:border-cyan/50 hover:text-cyan"
-          >
-            clear filter
-          </button>
-        )}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
       {visibleRepos.map((repo, i) => {
