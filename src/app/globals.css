@@ -6,8 +6,8 @@
   --surface-raised: #191c21;
   --hairline: #24272e;
   --text: #e8e6e1;
-  --text-muted: #8b8f98;
-  --text-faint: #565961;
+  --text-muted: #a0a4ad;
+  --text-faint: #70747d;
   --amber: #e8a33d;
   --amber-dim: #7a5a26;
   --cyan: #3ddad7;
@@ -49,6 +49,9 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   background-image:
     radial-gradient(ellipse 900px 500px at 8% -10%, rgba(232, 163, 61, 0.10), transparent 60%),
     radial-gradient(ellipse 700px 500px at 100% 0%, rgba(61, 218, 215, 0.08), transparent 55%);

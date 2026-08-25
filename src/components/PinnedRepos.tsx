@@ -30,7 +30,8 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-40px" }}
             transition={{ duration: 0.35, delay: index * 0.05 }}
-            className="group flex min-h-36 flex-col justify-between rounded-lg border border-hairline bg-surface/80 p-4 backdrop-blur-sm transition-colors hover:border-amber/60 hover:bg-surface-raised/60"
+            whileHover={{ y: -3, borderColor: "var(--cyan)" }}
+            className="group flex min-h-36 flex-col gap-3 rounded-lg border border-hairline bg-surface/80 p-4 pb-3 backdrop-blur-sm transition-[border-color,transform,background-color] hover:bg-surface-raised/60"
           >
             <div>
               <div className="flex items-start justify-between gap-3">
@@ -39,11 +40,11 @@ export default function PinnedRepos({ repos }: { repos: PinnedRepo[] | null }) {
                 </h3>
                 <ExternalLink className="h-3.5 w-3.5 shrink-0 text-text-faint transition-colors group-hover:text-amber" aria-hidden="true" />
               </div>
-              <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-text-muted">
+              <p className="mt-2 min-h-[32px] line-clamp-2 text-xs leading-relaxed text-text-muted">
                 {repo.description || "No description provided."}
               </p>
             </div>
-            <div className="mt-4 flex items-center gap-4 font-mono text-[11px] text-text-faint">
+            <div className="mt-auto flex items-center gap-3 border-t border-hairline/60 pt-2 font-mono text-[11px] text-text-faint">
               {repo.primaryLanguage && (
                 <span className="flex items-center gap-1.5">
                   <span
