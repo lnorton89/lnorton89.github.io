@@ -88,7 +88,11 @@ export default function ContributionHeatmap({
             : "approximate — recent public push activity"}
         </span>
       </div>
-      <div className="grid w-full min-w-[560px] grid-flow-col auto-cols-fr gap-[3px] overflow-x-auto scroll-thin pb-2">
+      <div
+        role="grid"
+        aria-label="Contribution activity by day"
+        className="grid w-full min-w-[560px] grid-flow-col auto-cols-fr gap-[3px] overflow-x-auto scroll-thin pb-2"
+      >
         {grid.columns.map((col, ci) => (
           <div key={ci} className="grid grid-rows-7 gap-[3px] min-w-[9px]">
             {col.map((cell, ri) => (
@@ -106,7 +110,7 @@ export default function ContributionHeatmap({
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ duration: 0.25, delay: (ci * col.length + ri) * 0.002 }}
-                className={`aspect-square w-full rounded-[2px] ${CELL_STYLES[intensity(cell.count, grid.max)]}`}
+                className={`aspect-square w-full cursor-help rounded-[2px] transition-[filter,box-shadow] hover:brightness-125 hover:ring-1 hover:ring-cyan/70 focus-visible:ring-1 focus-visible:ring-cyan ${CELL_STYLES[intensity(cell.count, grid.max)]}`}
               />
             ))}
           </div>
