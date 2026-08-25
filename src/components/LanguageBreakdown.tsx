@@ -1,6 +1,5 @@
 "use client";
 
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { motion } from "framer-motion";
 import { Code2 } from "lucide-react";
 import type { IconType } from "react-icons";
@@ -86,60 +85,7 @@ export default function LanguageBreakdown({
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="min-w-0 flex-1"
-                style={{ height: Math.max(250, data.length * 25) }}
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data} layout="vertical" margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
-                    <XAxis type="number" domain={[0, "dataMax"]} hide />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      width={8}
-                      tick={false}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <Tooltip
-                      cursor={{ fill: "transparent" }}
-                      contentStyle={{
-                        background: "#191c21",
-                        border: "1px solid #24272e",
-                        borderRadius: 8,
-                        fontSize: 12,
-                        fontFamily: "var(--font-mono)",
-                      }}
-                      formatter={(_value, _name, item) => [
-                        `${item.payload.pct}%`,
-                        item.payload.name,
-                      ]}
-                    />
-                    <Bar
-                      dataKey="chartValue"
-                      radius={[0, 4, 4, 0]}
-                      barSize={10}
-                      cursor="pointer"
-                      activeBar={{ fill: "#ffffff", opacity: 1 }}
-                    >
-                      {data.map((d) => (
-                        <Cell
-                          key={d.name}
-                          fill={languageColor(d.name)}
-                          opacity={selectedLanguage && selectedLanguage !== d.name ? 0.25 : 1}
-                          onClick={() => setSelectedLanguage(selectedLanguage === d.name ? null : d.name)}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </motion.div>
-              <ul className="min-w-0 flex-1 space-y-1.5">
+            <ul className="space-y-1.5">
                 {data.map((d, index) => (
                   <motion.li
                     key={d.name}
@@ -152,7 +98,7 @@ export default function LanguageBreakdown({
                       type="button"
                       onClick={() => setSelectedLanguage(selectedLanguage === d.name ? null : d.name)}
                       aria-pressed={selectedLanguage === d.name}
-                      className={`flex w-full items-center gap-2 rounded px-1 py-1 text-left text-xs transition-colors hover:bg-surface-raised ${
+                      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto_minmax(80px,0.7fr)] items-center gap-2 rounded px-1 py-1 text-left text-xs transition-colors hover:bg-surface-raised ${
                         selectedLanguage && selectedLanguage !== d.name ? "opacity-45" : ""
                       } ${selectedLanguage === d.name ? "bg-surface-raised" : ""}`}
                     >
@@ -162,11 +108,20 @@ export default function LanguageBreakdown({
                       })()}
                       <span className="truncate text-text">{d.name}</span>
                       <span className="ml-auto shrink-0 font-mono text-text-faint">{d.pct}%</span>
+                      <span className="h-2 overflow-hidden rounded-full bg-surface-raised" aria-hidden="true">
+                        <span
+                          className="block h-full rounded-full transition-[width,background-color,opacity]"
+                          style={{
+                            width: `${Math.max(d.chartValue, 1)}%`,
+                            backgroundColor: languageColor(d.name),
+                            opacity: selectedLanguage && selectedLanguage !== d.name ? 0.25 : 1,
+                          }}
+                        />
+                      </span>
                     </button>
                   </motion.li>
                 ))}
-              </ul>
-            </div>
+            </ul>
             <p className="mt-4 border-t border-hairline/60 pt-3 font-mono text-[11px] text-text-faint">
               showing {entries.length} of {allEntries.length} languages · {total.toLocaleString()} bytes represented
             </p>
