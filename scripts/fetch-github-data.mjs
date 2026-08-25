@@ -6,12 +6,27 @@
 // GH_PAT for a personal access token with higher rate limits / contribution data.
 import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import "dotenv/config"; // loads .env.local for local development; no-op in CI
 
-
-
 const USERNAME = process.env.GH_USERNAME;
-const TOKEN = process.env.GH_PAT || process.env.GITHUB_TOKEN;
+
+function getGithubToken() {
+  if (process.env.GH_PAT || process.env.GITHUB_TOKEN) {
+    return process.env.GH_PAT || process.env.GITHUB_TOKEN;
+  }
+
+  try {
+    return execFileSync("gh", ["auth", "token"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const TOKEN = getGithubToken();
 
 if (!USERNAME) {
   console.error(
