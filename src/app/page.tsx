@@ -39,8 +39,6 @@ export default function Home() {
     );
   }
 
-  // The structured data describes THIS website, not the GitHub profile. The
-  // GitHub profile belongs in sameAs.
   const { rootUrl } = getSiteConfig();
   const profilePageId = `${rootUrl}#profile-page`;
   const personId = `${rootUrl}#person`;
@@ -90,20 +88,36 @@ export default function Home() {
                 Activity overview
               </h2>
               <p className="mt-1 font-mono text-[11px] text-text-faint">
-                contributions and commit velocity, side by side
+                {data.contributions
+                  ? "contributions and tracked-repository commit velocity, side by side"
+                  : "GitHub-attributed commit activity across tracked repositories"}
               </p>
             </div>
           </div>
-          <div className="rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm">
-            <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.85fr)]">
-            <ContributionHeatmap
-              contributions={data.contributions}
-              weeklyFallback={data.weeklyCommits}
-              embedded
-            />
-            <CommitActivityChart weekly={data.weeklyCommits} coverage={data.weeklyCommitsCoverage} username={data.profile.login} embedded />
+
+          {data.contributions ? (
+            <div className="rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm">
+              <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.85fr)]">
+                <ContributionHeatmap
+                  contributions={data.contributions}
+                  weeklyFallback={data.weeklyCommits}
+                  embedded
+                />
+                <CommitActivityChart
+                  weekly={data.weeklyCommits}
+                  coverage={data.weeklyCommitsCoverage}
+                  username={data.profile.login}
+                  embedded
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <CommitActivityChart
+              weekly={data.weeklyCommits}
+              coverage={data.weeklyCommitsCoverage}
+              username={data.profile.login}
+            />
+          )}
         </SectionReveal>
 
         <SectionReveal className="grid items-stretch gap-8 pb-14 lg:grid-cols-2">
@@ -120,8 +134,12 @@ export default function Home() {
         </SectionReveal>
 
         <SectionReveal className="pb-20">
-          <div id="repositories" tabIndex={-1} className="scroll-mt-6 flex items-baseline justify-between mb-4 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan">
-            <h2 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide text-text">
+          <div className="mb-4 flex items-baseline justify-between gap-4">
+            <h2
+              id="repositories"
+              tabIndex={-1}
+              className="scroll-mt-6 flex items-center gap-2 rounded font-display text-sm font-semibold tracking-wide text-text focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
+            >
               <FolderGit2 className="h-4 w-4 text-cyan" aria-hidden="true" />
               Recently active repositories
             </h2>
@@ -139,9 +157,7 @@ export default function Home() {
 
         <footer className="pb-16 pt-8 border-t border-hairline flex flex-wrap items-center justify-between gap-3 font-mono text-[11px] text-text-faint">
           <SnapshotStatus snapshot={data} />
-          <span>
-            built with Next.js, framer-motion &amp; the GitHub API
-          </span>
+          <span>built with Next.js, framer-motion &amp; the GitHub API</span>
         </footer>
       </div>
     </main>
