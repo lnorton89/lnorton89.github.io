@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mergeRepos, mergeSnapshot, type ClientRefresh } from "../src/lib/merge-snapshot";
+import { trackedFileCount } from "../src/lib/repo-filter";
 import type { GithubSnapshot, RepoSummary, RefreshableRepo } from "../src/lib/types";
 
 function baseRepo(overrides: Partial<RepoSummary> = {}): RepoSummary {
@@ -19,6 +20,7 @@ function baseRepo(overrides: Partial<RepoSummary> = {}): RepoSummary {
     visibility: "public",
     languages: { TypeScript: 80000, JavaScript: 20000 },
     languageFiles: { TypeScript: 40, JavaScript: 12 },
+    languageFilesComplete: true,
     ...overrides,
   };
 }
@@ -73,7 +75,7 @@ function freshRepo(overrides: Partial<RefreshableRepo> = {}): RefreshableRepo {
 }
 
 describe("mergeRepos", () => {
-  it("preserves build-time languages and languageFiles from a client refresh", () => {
+  it("preserves build-time languages, files, and completeness from a client refresh", () => {
     const merged = mergeRepos([baseRepo()], [freshRepo()]);
     expect(merged).toHaveLength(1);
     expect(merged[0].description).toBe("fresh description");
@@ -81,6 +83,18 @@ describe("mergeRepos", () => {
     expect(merged[0].language).toBe("Rust");
     expect(merged[0].languages).toEqual({ TypeScript: 80000, JavaScript: 20000 });
     expect(merged[0].languageFiles).toEqual({ TypeScript: 40, JavaScript: 12 });
+    expect(merged[0].languageFilesComplete).toBe(true);
+  });
+
+  it("never turns a partial file count authoritative after sync", () => {
+    const base = baseRepo({
+      languageFiles: { TypeScript: 12 },
+      languageFilesComplete: false,
+    });
+    const [merged] = mergeRepos([base], [freshRepo()]);
+    expect(merged.languageFiles).toEqual({ TypeScript: 12 });
+    expect(merged.languageFilesComplete).toBe(false);
+    expect(trackedFileCount(merged)).toBeNull();
   });
 
   it("does not replace records missing from the fresh response (grid never shrinks)", () => {
@@ -97,6 +111,7 @@ describe("mergeRepos", () => {
     const gamma = merged.find((r) => r.fullName === "user/gamma");
     expect(gamma?.stars).toBe(9);
     expect(gamma?.languages).toBeUndefined();
+    expect(gamma?.languageFilesComplete).toBeUndefined();
   });
 
   it("sorts merged results by most recently pushed", () => {
@@ -154,15 +169,15 @@ describe("fetchLiveSnapshot failure behavior", () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock
       .mockResolvedValueOnce(new Response("{}", { status: 200, headers: { "content-type": "application/json" } }))
-      .mockResolvedValueOnce(new Response("rate limited", { status: 403, headers: { "x-ratelimit-remaining": "0", "x-ratelimit-reset": "9999999999" } }));
+      .mockResolvedValueOnce(new Response(JSON.stringify({ message: "API rate limit exceeded" }), { status: 403, headers: { "x-ratelimit-remaining": "0", "x-ratelimit-reset": "9999999999" } }));
 
     const base = baseSnapshot();
     await expect(fetchLiveSnapshot("user", base)).rejects.toMatchObject({
       name: "GithubApiError",
       status: 403,
       rateLimitRemaining: "0",
+      responseMessage: "API rate limit exceeded",
     });
-    // A failed refresh must leave the existing snapshot untouched.
     expect(base.refreshedAt).toBeNull();
   });
 });
