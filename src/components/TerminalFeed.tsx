@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Activity, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { useLiveDataStore } from "@/store/live-data-store";
@@ -21,6 +21,7 @@ const TYPE_BADGE: Record<string, string> = {
   PushEvent: "border-cyan/30 bg-cyan/10 text-cyan",
   PullRequestEvent: "border-amber/30 bg-amber/10 text-amber",
   IssuesEvent: "border-danger/30 bg-danger/10 text-danger",
+  IssueCommentEvent: "border-cyan/30 bg-cyan/10 text-cyan",
   CreateEvent: "border-cyan/30 bg-cyan/10 text-cyan",
   ReleaseEvent: "border-amber/30 bg-amber/10 text-amber",
   WatchEvent: "border-amber/30 bg-amber/10 text-amber",
@@ -28,6 +29,7 @@ const TYPE_BADGE: Record<string, string> = {
 
 type GroupedFeedItem = FeedItem & {
   activityCount: number;
+  commitCount: number;
   activities: FeedItem[];
   commits: FeedCommit[];
 };
@@ -43,56 +45,109 @@ const FEED_FILTERS: Array<{ value: FeedFilter; label: string; types?: string[] }
   { value: "star", label: "stars", types: ["WatchEvent"] },
 ];
 
-function groupByRepository(feed: FeedItem[]): GroupedFeedItem[] {
-  const groups: FeedItem[][] = [];
-  for (const item of feed) {
-    const previous = groups[groups.length - 1];
-    if (previous && previous[0].repo === item.repo && previous[0].type === item.type) {
-      previous.push(item);
-    } else {
-      groups.push([item]);
-    }
+const PUSH_GROUP_WINDOW_MS = 20 * 60 * 1000;
+
+function sameGroup(previous: FeedItem, next: FeedItem): boolean {
+  if (previous.repo !== next.repo || previous.type !== next.type) return false;
+
+  if (next.type === "PushEvent") {
+    if ((previous.ref ?? "") !== (next.ref ?? "")) return false;
+    return Math.abs(new Date(previous.createdAt).getTime() - new Date(next.createdAt).getTime()) <= PUSH_GROUP_WINDOW_MS;
   }
-  return groups.slice(0, 24).map((activities) =>
-    createGroupedItem(activities, activities.flatMap((activity) => activity.commits ?? []))
-  );
+
+  if (next.type === "IssuesEvent" || next.type === "PullRequestEvent" || next.type === "ReleaseEvent") {
+    return (previous.action ?? "") === (next.action ?? "");
+  }
+
+  if (next.type === "CreateEvent") {
+    return (previous.ref ?? previous.detail ?? "") === (next.ref ?? next.detail ?? "");
+  }
+
+  return true;
 }
 
-function createGroupedItem(
-  activities: FeedItem[],
-  commits: FeedCommit[]
-): GroupedFeedItem {
+function groupFeed(feed: FeedItem[]): GroupedFeedItem[] {
+  const sorted = [...feed].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  const groups: FeedItem[][] = [];
+
+  for (const item of sorted) {
+    const previous = groups[groups.length - 1];
+    if (previous && sameGroup(previous[previous.length - 1], item)) previous.push(item);
+    else groups.push([item]);
+  }
+
+  return groups.slice(0, 24).map(createGroupedItem);
+}
+
+function dedupeCommits(commits: FeedCommit[]): FeedCommit[] {
+  return Array.from(new Map(commits.map((commit) => [commit.sha, commit])).values());
+}
+
+function createGroupedItem(activities: FeedItem[]): GroupedFeedItem {
   const first = activities[0];
-  const activityCount = first.type === "PushEvent"
-    ? commits.length || activities.length
-    : activities.length;
+  const commits = dedupeCommits(activities.flatMap((activity) => activity.commits ?? []));
+  const commitCount = first.type === "PushEvent"
+    ? activities.reduce(
+        (sum, activity) => sum + Math.max(1, activity.pushSize ?? activity.commits?.length ?? 0),
+        0
+      )
+    : 0;
+
   return {
     ...first,
     id: first.id,
     createdAt: first.createdAt,
-    summary: groupedSummary(first, activityCount),
+    summary: groupedSummary(first, activities.length, commitCount),
     detail: activities.length === 1 ? first.detail : undefined,
     url: first.url,
-    activityCount,
+    activityCount: activities.length,
+    commitCount,
     activities,
     commits,
   };
 }
 
-function groupedSummary(item: FeedItem, count: number): string {
-  if (count === 1) return item.summary;
-  if (item.type === "PushEvent") return `pushed ${count} commits`;
+function groupedSummary(item: FeedItem, activityCount: number, commitCount: number): string {
+  if (item.type === "PushEvent") {
+    if (activityCount === 1) return item.summary;
+    const branch = item.ref ? ` to ${item.ref.replace(/^refs\/heads\//, "")}` : "";
+    return `pushed ${commitCount} commits${branch} across ${activityCount} pushes`;
+  }
+  if (activityCount === 1) return item.summary;
 
-  const action = item.summary.split(" ")[0];
   const noun: Record<string, string> = {
     PullRequestEvent: "pull requests",
     IssuesEvent: "issues",
-    IssueCommentEvent: "comments",
-    CreateEvent: "items",
+    IssueCommentEvent: "issue comments",
+    CreateEvent: "create events",
     ReleaseEvent: "releases",
     WatchEvent: "stars",
   };
-  return `${action} ${count} ${noun[item.type] ?? "events"}`;
+  const action = item.action;
+  if (action && item.type !== "IssueCommentEvent") {
+    return `${action} ${activityCount} ${noun[item.type] ?? "events"}`;
+  }
+  return `${activityCount} ${noun[item.type] ?? "events"}`;
+}
+
+function detailPrefix(item: FeedItem): string {
+  if (item.action) return item.action;
+  switch (item.type) {
+    case "PullRequestEvent": return "pull request";
+    case "IssuesEvent": return "issue";
+    case "IssueCommentEvent": return "comment";
+    case "CreateEvent": return "created";
+    case "ReleaseEvent": return "release";
+    case "WatchEvent": return "star";
+    default: return "event";
+  }
+}
+
+function detailText(item: FeedItem): string {
+  if (item.detail && item.detail !== item.summary) return item.detail;
+  return item.summary;
 }
 
 function DetailEntry({
@@ -109,10 +164,10 @@ function DetailEntry({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex items-start gap-2 rounded border border-hairline/60 bg-surface-raised/30 px-2 py-1.5 text-[11px] leading-relaxed text-text transition-colors hover:border-cyan/50 hover:bg-cyan/10 hover:text-cyan focus-visible:border-cyan/50 focus-visible:bg-cyan/10 focus-visible:text-cyan"
+      className="group flex min-w-0 items-start gap-2 rounded border border-hairline/60 bg-surface-raised/30 px-2 py-1.5 text-[11px] leading-relaxed text-text transition-colors hover:border-cyan/50 hover:bg-cyan/10 hover:text-cyan focus-visible:border-cyan/50 focus-visible:bg-cyan/10 focus-visible:text-cyan"
     >
       <span className="shrink-0 text-cyan">{prefix}</span>
-      <span className="min-w-0 flex-1">{children}</span>
+      <span className="min-w-0 flex-1 whitespace-normal break-words [overflow-wrap:anywhere]">{children}</span>
       <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-text-faint transition-colors group-hover:text-cyan" aria-hidden="true" />
     </a>
   );
@@ -133,11 +188,14 @@ function Line({
 }) {
   const typeLabel = TYPE_LABEL[item.type] ?? item.type.replace("Event", "").toLowerCase();
   const rowRef = useRef<HTMLLIElement>(null);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (!expanded) return;
-    rowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [expanded]);
+    rowRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "nearest" });
+  }, [expanded, reducedMotion]);
+
+  const detailsProvided = item.commits.length;
 
   return (
     <motion.li
@@ -169,18 +227,19 @@ function Line({
         </span>
         {item.activityCount > 1 && (
           <span className="order-5 shrink-0 rounded border border-hairline px-1.5 py-0.5 font-mono text-[10px] text-text-faint">
-            {item.activityCount} {item.type === "PushEvent" ? "commits" : "events"}
+            {item.activityCount} events
           </span>
         )}
         <span className="order-4 col-span-3 col-start-2 min-w-0 truncate text-text sm:col-auto sm:flex-1">
           {item.summary}
           {item.type === "PushEvent" && item.commits.length > 0 ? (
-            <span className="text-text-faint"> — {item.commits.map((commit) => commit.sha.slice(0, 7)).join(", ")}</span>
+            <span className="text-text-faint"> — {item.commits.slice(0, 4).map((commit) => commit.sha.slice(0, 7)).join(", ")}{item.commits.length > 4 ? ` +${item.commits.length - 4}` : ""}</span>
           ) : (
             item.detail && <span className="text-text-faint"> — {item.detail}</span>
           )}
         </span>
       </button>
+
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div
@@ -190,14 +249,16 @@ function Line({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="mx-2 mb-2 rounded border border-hairline/70 bg-bg/50 px-3 py-2.5 font-mono text-[11px]">
-              <div className="mb-2 flex items-center justify-between gap-3 text-text-faint">
+            <div className="mx-2 mb-2 min-w-0 rounded border border-hairline/70 bg-bg/50 px-3 py-2.5 font-mono text-[11px]">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-text-faint">
                 <span className="uppercase tracking-wide text-cyan">event detail</span>
-                <span className="whitespace-nowrap">{new Date(item.createdAt).toUTCString()}</span>
+                <span>{new Date(item.createdAt).toUTCString()}</span>
               </div>
-              <div className="mb-2 space-y-1.5">
-                {item.type === "PushEvent" && item.commits.length > 0
-                  ? item.commits.map((commit) => (
+
+              <div className="space-y-1.5">
+                {item.type === "PushEvent" ? (
+                  item.commits.length > 0 ? (
+                    item.commits.map((commit) => (
                       <DetailEntry
                         key={commit.sha}
                         href={commit.url ?? item.url ?? `https://github.com/${item.repo}/commit/${commit.sha}`}
@@ -206,15 +267,36 @@ function Line({
                         {commit.message}
                       </DetailEntry>
                     ))
-                  : item.activities.map((activity) => (
-                      <DetailEntry
-                        key={activity.id}
-                        href={activity.url ?? `https://github.com/${activity.repo}`}
-                        prefix={hydrated ? relativeTime(activity.createdAt) : "recently"}
-                      >
-                        {activity.detail || activity.summary}
-                      </DetailEntry>
-                    ))}
+                  ) : (
+                    <DetailEntry href={item.url ?? `https://github.com/${item.repo}`} prefix="push">
+                      {item.ref
+                        ? `${item.commitCount} commit${item.commitCount === 1 ? "" : "s"} to ${item.ref.replace(/^refs\/heads\//, "")}`
+                        : `${item.commitCount} commit${item.commitCount === 1 ? "" : "s"}`}
+                    </DetailEntry>
+                  )
+                ) : (
+                  item.activities.map((activity) => (
+                    <DetailEntry
+                      key={activity.id}
+                      href={activity.url ?? `https://github.com/${activity.repo}`}
+                      prefix={detailPrefix(activity)}
+                    >
+                      {detailText(activity)}
+                    </DetailEntry>
+                  ))
+                )}
+              </div>
+
+              {item.type === "PushEvent" && item.commitCount > detailsProvided && (
+                <p className="mt-2 text-[10px] leading-relaxed text-text-faint">
+                  Showing {detailsProvided} commit detail{detailsProvided === 1 ? "" : "s"} supplied by GitHub for {item.commitCount} commits across {item.activityCount} push{item.activityCount === 1 ? "" : "es"}.
+                </p>
+              )}
+
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-hairline/50 pt-2 text-[10px] text-text-faint">
+                <span>{item.repo}</span>
+                <span>{typeLabel}</span>
+                {item.ref && <span>{item.ref.replace(/^refs\/heads\//, "")}</span>}
               </div>
             </div>
           </motion.div>
@@ -232,7 +314,7 @@ export default function TerminalFeed({ base }: { base: GithubSnapshot }) {
   const filteredFeed = activeFilter?.types
     ? data.feed.filter((item) => activeFilter.types?.includes(item.type))
     : data.feed;
-  const items = groupByRepository(filteredFeed).slice(0, 24);
+  const items = groupFeed(filteredFeed);
   const repositoryCount = new Set(filteredFeed.map((item) => item.repo)).size;
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const hydrated = useSyncExternalStore(
@@ -269,7 +351,7 @@ export default function TerminalFeed({ base }: { base: GithubSnapshot }) {
               aria-pressed={filter === entry.value}
               onClick={() => {
                 setFilter(entry.value);
-                setExpandedId(null); // a filter change may hide the expanded entry
+                setExpandedId(null);
               }}
               className={`rounded border px-2 py-1 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan ${
                 filter === entry.value
