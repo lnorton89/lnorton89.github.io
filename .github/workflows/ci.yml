@@ -1,14 +1,18 @@
-name: Validate pull request
+name: Validate changes
 
 on:
   pull_request:
     branches: [main]
+  push:
+    branches-ignore: [main]
 
 permissions:
   contents: read
 
 concurrency:
-  group: validate-${{ github.event.pull_request.number }}
+  # Push and PR events for the same branch share a group, so opening/updating a
+  # PR does not leave duplicate validation runs chewing through API quota.
+  group: validate-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
