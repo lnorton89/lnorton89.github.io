@@ -12,10 +12,11 @@ refreshed client-side on demand.
 - React 19
 - Tailwind CSS v4 (design tokens in `src/app/globals.css`)
 - framer-motion — page-load choreography, scroll reveals, hover states
-- recharts — language donut, commit velocity sparkline
+- recharts — commit velocity area chart
 - @tanstack/react-query — client-side "sync now" refresh against the GitHub REST API
 - zustand — shared store so a single sync action updates every component
 - lucide-react — icons
+- vitest — focused tests for the snapshot-merge and filtering logic
 
 ## How the data flows
 
@@ -23,16 +24,21 @@ refreshed client-side on demand.
 and writes a snapshot to `public/data/github.json`:
 
 - Profile, repos, languages, and recent public events via the REST API
+- Per-repository weekly commit statistics via `repos/{owner}/{repo}/stats/commit_activity`
 - The real contribution calendar via the GraphQL API, **only if a token is
   available** (`GH_PAT` or the Actions-provided `GITHUB_TOKEN`) — without one,
-  the heatmap falls back to an approximate commit-velocity view built from
-  public push events, clearly labeled as such
+  the heatmap falls back to the build-time commit-statistics view, clearly
+  labeled as such
 
 The page reads that JSON at build time (`fs.readFileSync`, no client fetch
-needed for first paint). A "sync now" button re-fetches the public REST
-endpoints directly from the browser via TanStack Query and overlays the
-result through a zustand store — useful between scheduled rebuilds, subject
-to GitHub's unauthenticated 60 req/hr per-IP limit.
+needed for first paint). A "sync now" button manually re-fetches only the
+profile, repository metadata, and recent public events directly from the
+browser via TanStack Query — three requests in total. Those fields merge over
+the build snapshot by repository `fullName` while its enriched language,
+source-file, contribution, and commit-history data is preserved. Browser
+refreshes are subject to GitHub's unauthenticated 60 req/hr per-IP limit; a
+rate-limited refresh reports the failure and leaves the existing snapshot
+untouched.
 
 ## Local development
 
@@ -45,6 +51,18 @@ npm run dev
 
 `predev` fetches a fresh snapshot automatically. Run `npm run fetch:data` any
 time to refresh it manually.
+
+## Testing
+
+```bash
+npm test
+```
+
+Runs the Vitest suite in `tests/` covering the snapshot-merge behavior (a
+client refresh must never overwrite build-time language/source-file data, and
+failed refreshes must not replace the base snapshot), repository filtering,
+and file-metric formatting (missing tree data stays "unavailable" rather than
+becoming a fake zero or estimate).
 
 ## Deploying to GitHub Pages
 
@@ -63,6 +81,8 @@ time to refresh it manually.
 
 - Static export means no server runtime: no API routes, no ISR, no
   `next/image` optimization (`images.unoptimized: true` is required).
-- The commit-velocity fallback only covers the events API's ~90-day public
-  window, backfilled with zeros further back — it's framed as recent
-  activity, not a full year, unless the real GraphQL calendar is available.
+- The public Events API returns at most 300 events from roughly the previous
+  30 days. It is used for recent activity, not as a complete contribution
+  history.
+- Repository source-file counts come from recognized file extensions in the
+  recursive Git tree; they are not a count of every file in a repository.

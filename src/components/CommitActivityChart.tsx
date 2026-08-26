@@ -2,15 +2,21 @@
 
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { useState } from "react";
-import type { WeeklyCommits } from "@/lib/types";
-import { useLiveDataStore } from "@/store/live-data-store";
+import type { WeeklyCommits, GithubSnapshot } from "@/lib/types";
 
-export default function CommitActivityChart({ weekly, embedded = false }: { weekly: WeeklyCommits[]; embedded?: boolean }) {
-  const live = useLiveDataStore((state) => state.liveSnapshot);
-  weekly = live?.weeklyCommits ?? weekly;
+export default function CommitActivityChart({
+  weekly,
+  coverage,
+  embedded = false,
+}: {
+  weekly: WeeklyCommits[];
+  coverage?: GithubSnapshot["weeklyCommitsCoverage"];
+  embedded?: boolean;
+}) {
   const [windowWeeks, setWindowWeeks] = useState(16);
   const visibleWeeks = weekly.slice(-windowWeeks);
-  const totalRecent = visibleWeeks.reduce((s, w) => s + w.commits, 0);
+  const totalRecent = visibleWeeks.reduce((s, w) => s + (w.commits ?? 0), 0);
+  const hasCompleteData = coverage?.complete ?? weekly.every((week) => week.commits !== null);
 
   return (
     <div className={`h-full ${embedded ? "lg:border-l lg:border-hairline lg:pl-6" : "rounded-lg border border-hairline bg-surface/80 p-5 backdrop-blur-sm"}`}>
@@ -34,14 +40,18 @@ export default function CommitActivityChart({ weekly, embedded = false }: { week
             ))}
         </div>
       </div>
-      {totalRecent === 0 ? (
+      {!hasCompleteData ? (
+        <p className="flex h-[120px] items-center justify-center text-center font-mono text-xs text-text-faint">
+          Commit activity is incomplete ({coverage?.coveredRepos ?? 0}/{coverage?.eligibleRepos ?? 0} repositories covered)
+        </p>
+      ) : totalRecent === 0 ? (
         <p className="flex h-[120px] items-center justify-center text-center font-mono text-xs text-text-faint">
           No public push activity available for this window
         </p>
       ) : (
       <div className="h-[120px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={visibleWeeks} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+          <AreaChart data={visibleWeeks.map((week) => ({ ...week, commits: week.commits ?? 0 }))} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
             <defs>
               <linearGradient id="commitFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#3ddad7" stopOpacity={0.45} />
@@ -80,9 +90,11 @@ export default function CommitActivityChart({ weekly, embedded = false }: { week
         </ResponsiveContainer>
       </div>
       )}
-      <p className="mt-3 font-mono text-xs text-text-muted">
-        {totalRecent} commits in last {windowWeeks} weeks
-      </p>
+      {hasCompleteData && (
+        <p className="mt-3 font-mono text-xs text-text-muted">
+          {totalRecent} commits in last {windowWeeks} weeks
+        </p>
+      )}
     </div>
   );
 }

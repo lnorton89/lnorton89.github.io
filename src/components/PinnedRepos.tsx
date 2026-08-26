@@ -2,16 +2,15 @@
 
 import { motion } from "framer-motion";
 import { ExternalLink, GitFork, Pin, Star } from "lucide-react";
-import { compactNumber } from "@/lib/format";
+import { compactNumber, formatNumber } from "@/lib/format";
+import { sourceFileCount } from "@/lib/repo-filter";
 import type { PinnedRepo } from "@/lib/types";
 import type { RepoSummary } from "@/lib/types";
 import { useLiveDataStore } from "@/store/live-data-store";
 
 function repoMetrics(repo: RepoSummary | undefined) {
   if (!repo) return null;
-  const files = Object.values(repo.languageFiles ?? {}).reduce((sum, count) => sum + count, 0);
-  const bytes = Object.values(repo.languages ?? {}).reduce((sum, count) => sum + count, 0);
-  return { files, loc: Math.max(1, Math.round(bytes / 45)) };
+  return { files: sourceFileCount(repo) };
 }
 
 export default function PinnedRepos({ repos, allRepos }: { repos: PinnedRepo[] | null; allRepos: RepoSummary[] }) {
@@ -35,11 +34,8 @@ export default function PinnedRepos({ repos, allRepos }: { repos: PinnedRepo[] |
           (() => {
             const metrics = repoMetrics(liveRepos.find((candidate) => candidate.name === repo.name));
             return (
-          <motion.a
+          <motion.article
             key={repo.url}
-            href={repo.url}
-            target="_blank"
-            rel="noopener noreferrer"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true, margin: "-40px" }}
@@ -50,10 +46,15 @@ export default function PinnedRepos({ repos, allRepos }: { repos: PinnedRepo[] |
           >
             <div>
               <div className="flex items-start justify-between gap-3">
-                <h3 className="truncate font-display text-[15px] font-semibold text-text">
-                  {repo.name}
-                </h3>
-                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-text-faint transition-colors group-hover:text-amber" aria-hidden="true" />
+                <a
+                  href={repo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex min-w-0 items-start justify-between gap-3 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
+                >
+                  <h3 className="truncate font-display text-[15px] font-semibold text-text">{repo.name}</h3>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-text-faint transition-colors group-hover:text-amber" aria-hidden="true" />
+                </a>
               </div>
               <p className="mt-2 min-h-[32px] line-clamp-2 text-xs leading-relaxed text-text-muted">
                 {repo.description || "No description provided."}
@@ -62,9 +63,20 @@ export default function PinnedRepos({ repos, allRepos }: { repos: PinnedRepo[] |
                 {repo.visibility ?? "public"} · {repo.openIssues ?? 0} open issues
                 {repo.createdAt && ` · since ${new Date(repo.createdAt).getUTCFullYear()}`}
               </div>
-              {repo.homepage && <div className="truncate font-mono text-[10px] text-cyan">{repo.homepage.replace(/^https?:\/\//, "")}</div>}
+              {repo.homepage && (
+                <a
+                  href={repo.homepage}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 block truncate font-mono text-[10px] text-cyan hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
+                >
+                  Live site: {repo.homepage.replace(/^https?:\/\//, "")}
+                </a>
+              )}
               {!!repo.topics?.length && <div className="truncate font-mono text-[10px] text-text-faint">#{repo.topics.join(" #")}</div>}
-              {metrics && <div className="font-mono text-[10px] text-text-faint">{metrics.files.toLocaleString()} files · ~{metrics.loc.toLocaleString()} LOC</div>}
+              <div className="font-mono text-[10px] text-text-faint">
+                {metrics?.files ? `${formatNumber(metrics.files)} source files` : "source files unavailable"}
+              </div>
             </div>
             <div className="mt-auto flex items-center gap-3 border-t border-hairline/60 pt-2 font-mono text-[11px] text-text-faint">
               {repo.primaryLanguage && (
@@ -94,7 +106,7 @@ export default function PinnedRepos({ repos, allRepos }: { repos: PinnedRepo[] |
                 style={{ background: repo.primaryLanguage?.color ?? "var(--hairline)" }}
               />
             </div>
-          </motion.a>
+          </motion.article>
             );
           })()
         ))}

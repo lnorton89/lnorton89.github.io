@@ -2,7 +2,7 @@
 
 import { motion, type Variants } from "framer-motion";
 import Image from "next/image";
-import { MapPin, Building2, Link as LinkIcon, FolderGit2, Users, Activity, CalendarDays } from "lucide-react";
+import { MapPin, Building2, Link as LinkIcon, FolderGit2, Users, Activity, CalendarDays, ExternalLink } from "lucide-react";
 import TerminalFeed from "@/components/TerminalFeed";
 import LiveSync from "@/components/LiveSync";
 import { compactNumber } from "@/lib/format";
@@ -29,10 +29,9 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
     { label: "Following", value: profile.following, icon: Users },
     ...(contributions
       ? [
-          { label: "Contributions / year", value: contributions.contributionCalendar.totalContributions, icon: Activity },
           {
-            label: "Contributions / month",
-            value: Math.round(contributions.contributionCalendar.totalContributions / 12),
+            label: "Contributions / year",
+            value: contributions.contributionCalendar.totalContributions,
             icon: Activity,
           },
         ]
@@ -48,24 +47,41 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
         className="grid min-w-0 items-end gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-12"
       >
         <div className="min-w-0">
-        <motion.div variants={item} className="flex items-center gap-3 mb-6">
-          <Image
-            src={profile.avatarUrl}
-            alt={profile.login}
-            width={44}
-            height={44}
-            loading="eager"
-            className="rounded-full border border-hairline"
-            unoptimized
-          />
-          <span className="font-mono text-sm text-text-muted">@{profile.login}</span>
-          <span className="relative flex h-2 w-2 ml-1">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan opacity-60" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan" />
-          </span>
-          <span className="font-mono text-[11px] text-cyan/80 uppercase tracking-wide">
-            Building now
-          </span>
+        <motion.div variants={item} className="mb-6 flex flex-wrap items-center gap-3">
+          <a
+            href={profile.htmlUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open ${profile.login}'s GitHub profile`}
+            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
+          >
+            <Image
+              src={profile.avatarUrl}
+              alt={profile.login}
+              width={44}
+              height={44}
+              loading="eager"
+              className="rounded-full border border-hairline"
+              unoptimized
+            />
+          </a>
+          <a
+            href={profile.htmlUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-sm text-text-muted hover:text-cyan focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
+          >
+            @{profile.login}
+          </a>
+          <a
+            href={profile.htmlUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded border border-hairline px-2 py-1 font-mono text-[10px] uppercase tracking-wide text-text-faint transition-colors hover:border-cyan/40 hover:text-cyan focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
+          >
+            <ExternalLink className="h-3 w-3" aria-hidden="true" />
+            GitHub profile
+          </a>
         </motion.div>
 
         <motion.h1

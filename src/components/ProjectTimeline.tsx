@@ -1,21 +1,22 @@
 "use client";
 
 import { Calendar, Clock3, Star, Waypoints } from "lucide-react";
+import { formatMonthYear, formatNumber } from "@/lib/format";
 import type { RepoSummary } from "@/lib/types";
 import { useLiveDataStore } from "@/store/live-data-store";
 
 export default function ProjectTimeline({ repos }: { repos: RepoSummary[] }) {
   const live = useLiveDataStore((state) => state.liveSnapshot);
-  repos = live?.topRepos ?? repos;
-  if (!repos.length) return null;
+  const displayedRepos = live?.topRepos ?? repos;
+  if (!displayedRepos.length) return null;
 
-  const oldest = [...repos].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))[0];
-  const newest = [...repos].sort((a, b) => +new Date(b.pushedAt) - +new Date(a.pushedAt))[0];
-  const starred = [...repos].sort((a, b) => b.stars - a.stars)[0];
+  const oldest = [...displayedRepos].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))[0];
+  const newest = [...displayedRepos].sort((a, b) => +new Date(b.pushedAt) - +new Date(a.pushedAt))[0];
+  const starred = [...displayedRepos].sort((a, b) => b.stars - a.stars)[0];
   const spanYears = Math.max(0, new Date(newest.pushedAt).getUTCFullYear() - new Date(oldest.createdAt).getUTCFullYear());
   const milestones = [
-    { label: "first repository", repo: oldest, date: oldest.createdAt, icon: Calendar, color: "text-text-muted" },
-    { label: "latest momentum", repo: newest, date: newest.pushedAt, icon: Clock3, color: "text-cyan" },
+    { label: "oldest public project", repo: oldest, date: oldest.createdAt, icon: Calendar, color: "text-text-muted" },
+    { label: "most recently active", repo: newest, date: newest.pushedAt, icon: Clock3, color: "text-cyan" },
     { label: "most starred", repo: starred, date: null, icon: Star, color: "text-amber" },
   ];
 
@@ -29,7 +30,7 @@ export default function ProjectTimeline({ repos }: { repos: RepoSummary[] }) {
           </h2>
           <p className="mt-1 font-mono text-[11px] text-text-faint">the shape of the public build history</p>
         </div>
-        <span className="shrink-0 font-mono text-[11px] text-text-faint">{spanYears} years active</span>
+        <span className="shrink-0 font-mono text-[11px] text-text-faint">{spanYears} years of public history</span>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
         {milestones.map((milestone) => (
@@ -45,8 +46,8 @@ export default function ProjectTimeline({ repos }: { repos: RepoSummary[] }) {
             <div className="mt-1 truncate font-display text-sm font-semibold text-text group-hover:text-cyan">{milestone.repo.name}</div>
             <div className="mt-2 font-mono text-[10px] text-text-faint">
               {milestone.date
-                ? new Date(milestone.date).toLocaleDateString("en-US", { year: "numeric", month: "short" })
-                : `${milestone.repo.stars.toLocaleString()} stars`}
+                ? formatMonthYear(milestone.date)
+                : `${formatNumber(milestone.repo.stars)} stars`}
             </div>
           </a>
         ))}

@@ -42,7 +42,7 @@ const headers = {
   Accept: "application/vnd.github+json",
   "X-GitHub-Api-Version": "2022-11-28",
   "User-Agent": `${USERNAME}-github-showcase`,
-  ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
+  ...(TOKEN ? { Authorization: ["Bearer", TOKEN].join(" ") } : {}),
 };
 
 const repoLanguages = {};
@@ -167,7 +167,7 @@ async function main() {
     await Promise.all(
       events
     .filter((e) =>
-      ["PushEvent", "PullRequestEvent", "IssuesEvent", "CreateEvent", "ReleaseEvent", "WatchEvent"].includes(
+      ["PushEvent", "PullRequestEvent", "IssuesEvent", "IssueCommentEvent", "CreateEvent", "ReleaseEvent", "WatchEvent"].includes(
         e.type
       )
     )
@@ -176,10 +176,20 @@ async function main() {
     )
   );
 
-  // Weekly commit counts for the last 52 weeks, derived from PushEvents (build-time
-  // approximation — the events API only covers ~90 days; older weeks are backfilled
-  // with 0 and the chart is framed as "recent" activity, not a full year).
-  const weeklyCommits = await buildWeeklyCommits(USERNAME, nonForkRepos, events);
+  // Weekly commit counts for the last 52 weeks, derived from per-repository
+  // commit statistics. The Events API is limited to 300 events (about 30 days),
+  // so it is never used for historical coverage. If any eligible repository
+  // cannot be measured (statistics not yet generated after a bounded retry, or
+  // a fetch failure), the whole dataset is marked incomplete rather than
+  // presenting an authoritative-looking undercount.
+  const { weeklyCommits, weeklyCommitsCoverage } = await buildWeeklyCommits(USERNAME, nonForkRepos);
+  const commitCoverage = {
+    complete: Boolean(weeklyCommitsCoverage?.complete),
+    eligibleRepos: Number(weeklyCommitsCoverage?.eligibleRepos) || 0,
+    coveredRepos: Number(weeklyCommitsCoverage?.coveredRepos) || 0,
+    pendingRepos: Number(weeklyCommitsCoverage?.pendingRepos) || 0,
+    failedRepos: Number(weeklyCommitsCoverage?.failedRepos) || 0,
+  };
 
   const contribData = await graphql(
     `
@@ -237,6 +247,7 @@ async function main() {
 
   const snapshot = {
     generatedAt: new Date().toISOString(),
+    refreshedAt: null,
     profile: {
       login: profile.login,
       name: profile.name,
@@ -268,6 +279,7 @@ async function main() {
     })) ?? null,
     feed,
     weeklyCommits,
+    weeklyCommitsCoverage: commitCoverage,
     contributions: contribData?.user?.contributionsCollection ?? null,
     hasLiveContributionData: Boolean(contribData),
   };
@@ -374,7 +386,7 @@ async function summarizeEvent(e) {
   }
 }
 
-async function buildWeeklyCommits(username, repos, events) {
+async function buildWeeklyCommits(username, repos) {
   const now = new Date();
   const weeks = [];
   for (let i = 51; i >= 0; i--) {
@@ -384,34 +396,63 @@ async function buildWeeklyCommits(username, repos, events) {
     weeks.push({ weekStart: weekStart.toISOString().slice(0, 10), commits: 0 });
   }
 
-  let statsSucceeded = false;
-  for (const repo of repos.slice(0, 20)) {
+  let coveredRepos = 0;
+  let pendingRepos = 0;
+  let failedRepos = 0;
+  for (const repo of repos) {
     try {
-      const stats = await rest(`/repos/${username}/${repo.name}/stats/commit_activity`);
-      if (!Array.isArray(stats)) continue;
-      statsSucceeded = true;
+      const stats = await commitActivity(username, repo.name);
+      if (stats === null) {
+        pendingRepos += 1;
+        continue;
+      }
+      if (!Array.isArray(stats)) {
+        failedRepos += 1;
+        continue;
+      }
+      coveredRepos += 1;
       for (const week of stats) {
         const weekStart = new Date(week.week * 1000).toISOString().slice(0, 10);
         const target = weeks.find((entry) => entry.weekStart === weekStart);
         if (target) target.commits += week.total || 0;
       }
     } catch (err) {
+      failedRepos += 1;
       console.warn(`commit activity fetch failed for ${repo.name}:`, err.message);
     }
   }
+  const complete = coveredRepos === repos.length;
+  return {
+    weeklyCommits: complete ? weeks : weeks.map((week) => ({ ...week, commits: null })),
+    weeklyCommitsCoverage: {
+      complete,
+      eligibleRepos: repos.length,
+      coveredRepos,
+      pendingRepos,
+      failedRepos,
+    },
+  };
+}
 
-  if (statsSucceeded) return weeks;
-
-  // The events API is an intentionally rough fallback when commit statistics
-  // are still being computed or unavailable for the repository.
-  for (const event of events.filter((entry) => entry.type === "PushEvent")) {
-    const created = new Date(event.created_at);
-    created.setUTCHours(0, 0, 0, 0);
-    created.setUTCDate(created.getUTCDate() - created.getUTCDay());
-    const target = weeks.find((entry) => entry.weekStart === created.toISOString().slice(0, 10));
-    if (target) target.commits += Math.max(1, event.payload.commits?.length ?? 0);
+async function commitActivity(username, repoName) {
+  const url = `${REST}/repos/${username}/${repoName}/stats/commit_activity`;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const res = await fetch(url, { headers });
+    if (res.status === 202) {
+      // GitHub is still generating statistics for this repository. Wait briefly
+      // and retry a bounded number of times instead of treating it as empty.
+      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1000));
+      continue;
+    }
+    if (res.status === 204) {
+      // Repository has no commit activity in the window: measured zero, not missing.
+      return [];
+    }
+    if (!res.ok) throw new Error(`GET ${url} -> ${res.status} ${await res.text()}`);
+    return res.json();
   }
-  return weeks;
+  // Exhausted the bounded 202 retries: statistics are still generating.
+  return null;
 }
 
 main().catch((err) => {

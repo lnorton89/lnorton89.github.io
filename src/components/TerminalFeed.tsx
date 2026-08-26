@@ -31,6 +31,16 @@ type GroupedFeedItem = FeedItem & {
   activities: FeedItem[];
   commits: FeedCommit[];
 };
+type FeedFilter = "all" | "push" | "pull" | "issue" | "release" | "create";
+
+const FEED_FILTERS: Array<{ value: FeedFilter; label: string; types?: string[] }> = [
+  { value: "all", label: "all" },
+  { value: "push", label: "pushes", types: ["PushEvent"] },
+  { value: "pull", label: "pull requests", types: ["PullRequestEvent"] },
+  { value: "issue", label: "issues/comments", types: ["IssuesEvent", "IssueCommentEvent"] },
+  { value: "release", label: "releases", types: ["ReleaseEvent"] },
+  { value: "create", label: "created", types: ["CreateEvent"] },
+];
 
 function groupByRepository(feed: FeedItem[]): GroupedFeedItem[] {
   const groups: FeedItem[][] = [];
@@ -76,6 +86,7 @@ function groupedSummary(item: FeedItem, count: number): string {
   const noun: Record<string, string> = {
     PullRequestEvent: "pull requests",
     IssuesEvent: "issues",
+    IssueCommentEvent: "comments",
     CreateEvent: "items",
     ReleaseEvent: "releases",
     WatchEvent: "stars",
@@ -141,32 +152,32 @@ function Line({
         onClick={onToggle}
         aria-expanded={expanded}
         aria-controls={`activity-detail-${item.id}`}
-        className="grid w-full min-w-0 grid-cols-[auto_auto_1fr_auto] items-center gap-2.5 px-2 py-2 text-left sm:flex"
+        className="grid w-full min-w-0 grid-cols-[auto_auto_1fr_auto] items-center gap-x-2.5 gap-y-1 px-2 py-2 text-left sm:flex sm:items-center sm:gap-2.5"
       >
         {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-cyan" aria-hidden="true" />
+          <ChevronDown className="order-1 h-3.5 w-3.5 shrink-0 text-cyan" aria-hidden="true" />
         ) : (
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint transition-colors group-hover:text-cyan" aria-hidden="true" />
+          <ChevronRight className="order-1 h-3.5 w-3.5 shrink-0 text-text-faint transition-colors group-hover:text-cyan" aria-hidden="true" />
         )}
-        <span className={`inline-flex w-auto shrink-0 items-center justify-center rounded-full border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide transition-all group-hover:brightness-125 sm:w-[92px] ${TYPE_BADGE[item.type] ?? "border-hairline bg-surface-raised text-text-muted"}`}>
+        <span className={`order-2 inline-flex w-auto shrink-0 items-center justify-center rounded-full border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide transition-all group-hover:brightness-125 sm:w-[92px] ${TYPE_BADGE[item.type] ?? "border-hairline bg-surface-raised text-text-muted"}`}>
           {typeLabel}
         </span>
-        <span className="col-start-2 min-w-0 max-w-full truncate text-text-muted transition-colors group-hover:text-text sm:w-[24%] sm:shrink-0">{item.repo}</span>
-        <span className="col-span-3 col-start-2 min-w-0 truncate text-text sm:col-auto sm:flex-1">
+        <span className="order-3 min-w-0 truncate text-text-muted transition-colors group-hover:text-text sm:w-[24%] sm:shrink-0">{item.repo}</span>
+        <span className="order-6 ml-auto shrink-0 whitespace-nowrap font-mono text-[11px] text-text-faint">
+          {hydrated ? relativeTime(item.createdAt) : "recently"}
+        </span>
+        {item.activityCount > 1 && (
+          <span className="order-5 shrink-0 rounded border border-hairline px-1.5 py-0.5 font-mono text-[10px] text-text-faint">
+            {item.activityCount} {item.type === "PushEvent" ? "commits" : "events"}
+          </span>
+        )}
+        <span className="order-4 col-span-3 col-start-2 min-w-0 truncate text-text sm:col-auto sm:flex-1">
           {item.summary}
           {item.type === "PushEvent" && item.commits.length > 0 ? (
             <span className="text-text-faint"> — {item.commits.map((commit) => commit.sha.slice(0, 7)).join(", ")}</span>
           ) : (
             item.detail && <span className="text-text-faint"> — {item.detail}</span>
           )}
-        </span>
-        {item.activityCount > 1 && (
-          <span className="shrink-0 rounded border border-hairline px-1.5 py-0.5 font-mono text-[10px] text-text-faint">
-            {item.activityCount} {item.type === "PushEvent" ? "commits" : "events"}
-          </span>
-        )}
-        <span className="ml-auto shrink-0 whitespace-nowrap font-mono text-[11px] text-text-faint">
-          {hydrated ? relativeTime(item.createdAt) : "recently"}
         </span>
       </button>
       <AnimatePresence initial={false}>
@@ -215,7 +226,12 @@ function Line({
 export default function TerminalFeed({ base }: { base: GithubSnapshot }) {
   const live = useLiveDataStore((s) => s.liveSnapshot);
   const data = live ?? base;
-  const items = groupByRepository(data.feed).slice(0, 24);
+  const [filter, setFilter] = useState<FeedFilter>("all");
+  const activeFilter = FEED_FILTERS.find((entry) => entry.value === filter);
+  const filteredFeed = activeFilter?.types
+    ? data.feed.filter((item) => activeFilter.types?.includes(item.type))
+    : data.feed;
+  const items = groupByRepository(filteredFeed).slice(0, 24);
   const repositoryCount = new Set(data.feed.map((item) => item.repo)).size;
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const hydrated = useSyncExternalStore(
@@ -235,16 +251,32 @@ export default function TerminalFeed({ base }: { base: GithubSnapshot }) {
           {data.profile.login}@github — activity
         </span>
         <span className="ml-auto flex items-center gap-1.5">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber opacity-60" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber" />
-          </span>
-          <span className="font-mono text-[11px] text-text-faint">live</span>
+          <span className="h-2 w-2 rounded-full bg-cyan" />
+          <span className="font-mono text-[11px] text-text-faint">GitHub activity</span>
         </span>
       </div>
-      <div className="flex items-center justify-between border-b border-hairline/60 px-4 py-2 font-mono text-[11px] text-text-faint">
-        <span><span className="text-cyan">$</span> gh activity --user {data.profile.login}</span>
-        <span className="tabular-nums">{repositoryCount} repos · {data.feed.length} events</span>
+      <div className="border-b border-hairline/60 px-4 py-2 font-mono text-[11px] text-text-faint">
+        <div className="flex items-center justify-between gap-3">
+          <span><span className="text-cyan">$</span> gh activity --user {data.profile.login}</span>
+          <span className="tabular-nums">{repositoryCount} repos · {filteredFeed.length} events</span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Filter activity">
+          {FEED_FILTERS.map((entry) => (
+            <button
+              key={entry.value}
+              type="button"
+              aria-pressed={filter === entry.value}
+              onClick={() => setFilter(entry.value)}
+              className={`rounded border px-2 py-1 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan ${
+                filter === entry.value
+                  ? "border-cyan/40 bg-cyan/10 text-cyan"
+                  : "border-hairline text-text-faint hover:border-cyan/30 hover:text-text-muted"
+              }`}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
       </div>
       <ul aria-label="Recent GitHub activity" className="max-h-[460px] overflow-y-auto px-2 py-1.5 scroll-thin">
         <AnimatePresence initial={false}>

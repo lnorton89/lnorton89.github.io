@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Code2, Files, ListTree } from "lucide-react";
+import { Code2, Files } from "lucide-react";
 import type { IconType } from "react-icons";
 import {
   SiC,
@@ -21,7 +21,7 @@ import {
   SiRust,
   SiTypescript,
 } from "react-icons/si";
-import { languageColor } from "@/lib/format";
+import { languageColor, formatNumber } from "@/lib/format";
 import { useLiveDataStore } from "@/store/live-data-store";
 import type { RepoSummary } from "@/lib/types";
 
@@ -71,7 +71,6 @@ export default function LanguageBreakdown({
     pct: total > 0 ? ((bytes / total) * 100).toFixed(1) : "0",
     pctValue: total > 0 ? (bytes / total) * 100 : 0,
     chartValue: total > 0 ? Math.max((bytes / total) * 100, 0.35) : 0,
-    filesEstimate: Math.max(1, Math.round(bytes / 4000)),
   }));
   const hoveredData = hoveredLanguage ? data.find((d) => d.name === hoveredLanguage.name) : null;
   const languageRepos = (language: string) =>
@@ -107,7 +106,7 @@ export default function LanguageBreakdown({
                 </button>
               )}
             </div>
-            <div className="mb-1 grid grid-cols-[auto_minmax(0,1fr)_3rem_4rem_minmax(120px,1.5fr)] items-center gap-2 px-1 font-mono text-[9px] uppercase tracking-wide text-text-faint">
+            <div className="mb-1 hidden grid-cols-[auto_minmax(0,1fr)_3rem_4rem_minmax(120px,1.5fr)] items-center gap-2 px-1 font-mono text-[9px] uppercase tracking-wide text-text-faint sm:grid">
               <span />
               <span>language</span>
               <span className="text-right">share</span>
@@ -136,7 +135,7 @@ export default function LanguageBreakdown({
                       type="button"
                       onClick={() => setSelectedLanguage(selectedLanguage === d.name ? null : d.name)}
                       aria-pressed={selectedLanguage === d.name}
-                      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_3rem_4rem_minmax(120px,1.5fr)] items-center gap-2 rounded px-1 py-1 text-left text-xs transition-colors hover:bg-surface-raised ${
+                      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_3rem] items-center gap-2 rounded px-1 py-1 text-left text-xs transition-colors hover:bg-surface-raised sm:grid-cols-[auto_minmax(0,1fr)_3rem_4rem_minmax(120px,1.5fr)] ${
                         selectedLanguage && selectedLanguage !== d.name ? "opacity-45" : ""
                       } ${selectedLanguage === d.name ? "bg-surface-raised" : ""}`}
                     >
@@ -146,10 +145,13 @@ export default function LanguageBreakdown({
                       })()}
                       <span className="truncate text-text">{d.name}</span>
                       <span className="shrink-0 text-right font-mono text-text-faint">{d.pct}%</span>
-                      <span className="shrink-0 text-right font-mono text-text-faint">
-                        {repos.reduce((sum, repo) => sum + (repo.languageFiles?.[d.name] ?? 0), 0).toLocaleString() || d.filesEstimate.toLocaleString()}
+                      <span className="hidden shrink-0 text-right font-mono text-text-faint sm:block">
+                        {(() => {
+                          const sourceFileCount = repos.reduce((sum, repo) => sum + (repo.languageFiles?.[d.name] ?? 0), 0);
+                          return sourceFileCount ? formatNumber(sourceFileCount) : "—";
+                        })()}
                       </span>
-                      <span className="h-2 overflow-hidden rounded-full bg-surface-raised" aria-hidden="true">
+                      <span className="col-start-2 col-span-2 h-2 overflow-hidden rounded-full bg-surface-raised sm:col-auto" aria-hidden="true">
                         <span
                           className="block h-full rounded-full transition-[width,background-color,opacity]"
                           style={{
@@ -167,14 +169,14 @@ export default function LanguageBreakdown({
               createPortal(
                 <div
                   role="tooltip"
-                  className="pointer-events-none fixed z-50 w-72 rounded-md border border-hairline bg-surface-raised px-3 py-2.5 font-mono text-[10px] text-text shadow-xl"
+                  className="pointer-events-none fixed z-50 max-h-[min(60vh,24rem)] w-[min(18rem,calc(100vw-1.5rem))] overflow-y-auto rounded-md border border-hairline bg-surface-raised px-3 py-2.5 font-mono text-[10px] text-text shadow-xl scroll-thin"
                   style={{ left: hoveredLanguage.x, top: hoveredLanguage.y }}
                 >
                   <div className="mb-1.5 flex items-center justify-between gap-3 text-text-muted">
                     <span>{languageRepos(hoveredData.name).length} repositories</span>
-                    <span>{hoveredData.value.toLocaleString()} bytes</span>
+                    <span>{formatNumber(hoveredData.value)} bytes</span>
                   </div>
-                  <div className="mb-1.5 text-[9px] text-text-faint">files are counted from repository trees; lines are estimated</div>
+                  <div className="mb-1.5 text-[9px] text-text-faint">source files are counted from recognized repository-tree extensions</div>
                   <div className="space-y-1">
                     {languageRepos(hoveredData.name).map(({ repo, bytes }) => (
                       <div key={repo.fullName} className="min-w-0">
@@ -189,8 +191,7 @@ export default function LanguageBreakdown({
                           <span className="shrink-0 text-text-faint">{((bytes / hoveredData.value) * 100).toFixed(1)}%</span>
                         </div>
                         <div className="flex items-center gap-2 text-[9px] text-text-faint">
-                          <span className="inline-flex items-center gap-1"><ListTree className="h-2.5 w-2.5" aria-hidden="true" />~{Math.max(1, Math.round(bytes / 45)).toLocaleString()} lines</span>
-                          <span className="inline-flex items-center gap-1"><Files className="h-2.5 w-2.5" aria-hidden="true" />{repo.languageFiles?.[hoveredData.name] ?? Math.max(1, Math.round(bytes / 4000)).toLocaleString()} files</span>
+                          <span className="inline-flex items-center gap-1"><Files className="h-2.5 w-2.5" aria-hidden="true" />{repo.languageFiles?.[hoveredData.name] ? `${formatNumber(repo.languageFiles[hoveredData.name])} source files` : "source files —"}</span>
                         </div>
                       </div>
                     ))}
@@ -199,7 +200,7 @@ export default function LanguageBreakdown({
                 document.body
               )}
             <p className="mt-4 border-t border-hairline/60 pt-3 font-mono text-[11px] text-text-faint">
-              showing {entries.length} of {allEntries.length} languages · {total.toLocaleString()} bytes represented
+              showing {entries.length} of {allEntries.length} languages · {formatNumber(total)} bytes represented
             </p>
           </>
         )}

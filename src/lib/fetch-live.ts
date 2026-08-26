@@ -1,9 +1,16 @@
-import type { GithubSnapshot, RepoSummary, FeedItem } from "@/lib/types";
+import type { GithubSnapshot, FeedItem, RefreshableRepo } from "@/lib/types";
+import { mergeSnapshot } from "@/lib/merge-snapshot";
 
 const REST = "https://api.github.com";
 
 export class GithubApiError extends Error {
-  constructor(public readonly path: string, public readonly status: number) {
+  constructor(
+    public readonly path: string,
+    public readonly status: number,
+    public readonly rateLimitRemaining: string | null,
+    public readonly rateLimitReset: string | null,
+    public readonly retryAfter: string | null,
+  ) {
     super(`GitHub API ${path} failed: ${status}`);
     this.name = "GithubApiError";
   }
@@ -13,13 +20,23 @@ async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${REST}${path}`, {
     headers: { Accept: "application/vnd.github+json" },
   });
-  if (!res.ok) throw new GithubApiError(path, res.status);
+  if (!res.ok) {
+    throw new GithubApiError(
+      path,
+      res.status,
+      res.headers.get("x-ratelimit-remaining"),
+      res.headers.get("x-ratelimit-reset"),
+      res.headers.get("retry-after"),
+    );
+  }
   return res.json();
 }
 
 // Refreshes the parts of the snapshot that unauthenticated REST calls can see.
 // Keep this to three requests per refresh: browsers share GitHub's 60 req/hr
-// anonymous limit, so per-repository language requests are not safe to poll.
+// anonymous limit, so per-repository language or tree requests are not safe to
+// poll. Fresh repository metadata is merged by fullName over the build-time
+// records (see mergeSnapshot) so enriched fields are never lost.
 export async function fetchLiveSnapshot(
   username: string,
   base: GithubSnapshot
@@ -71,11 +88,8 @@ export async function fetchLiveSnapshot(
     get<RestEvent[]>(`/users/${username}/events/public?per_page=30`),
   ]);
 
-  const baseRepos = new Map(base.topRepos.map((repo) => [repo.fullName, repo]));
-
-  const topRepos: RepoSummary[] = repos
+  const refreshableRepos: RefreshableRepo[] = repos
     .filter((r) => !r.fork && !r.archived)
-    .sort((a, b) => new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime())
     .map((r) => ({
       name: r.name,
       fullName: r.full_name,
@@ -90,11 +104,15 @@ export async function fetchLiveSnapshot(
       createdAt: r.created_at,
       topics: r.topics || [],
       visibility: r.visibility,
-      languages: baseRepos.get(r.full_name)?.languages ?? (r.language ? { [r.language]: 1 } : {}),
-      languageFiles: baseRepos.get(r.full_name)?.languageFiles,
     }));
 
-  const feed: FeedItem[] = await Promise.all(events.slice(0, 30).map(async (e) => ({
+  const feed: FeedItem[] = await Promise.all(events
+    .filter((e) =>
+      ["PushEvent", "PullRequestEvent", "IssuesEvent", "IssueCommentEvent", "CreateEvent", "ReleaseEvent", "WatchEvent"]
+        .includes(e.type)
+    )
+    .slice(0, 30)
+    .map(async (e) => ({
     id: e.id,
     type: e.type,
     repo: e.repo?.name ?? "",
@@ -113,30 +131,28 @@ export async function fetchLiveSnapshot(
       : undefined,
   })));
 
-  const weeklyCommits = buildWeeklyCommits(events);
-
-  return {
-    ...base,
-    generatedAt: new Date().toISOString(),
-    profile: {
-      login: profile.login,
-      name: profile.name,
-      avatarUrl: profile.avatar_url,
-      bio: profile.bio,
-      company: profile.company,
-      location: profile.location,
-      blog: profile.blog,
-      followers: profile.followers,
-      following: profile.following,
-      publicRepos: profile.public_repos,
-      createdAt: profile.created_at,
-      htmlUrl: profile.html_url,
+  return mergeSnapshot(
+    base,
+    {
+      profile: {
+        login: profile.login,
+        name: profile.name,
+        avatarUrl: profile.avatar_url,
+        bio: profile.bio,
+        company: profile.company,
+        location: profile.location,
+        blog: profile.blog,
+        followers: profile.followers,
+        following: profile.following,
+        publicRepos: profile.public_repos,
+        createdAt: profile.created_at,
+        htmlUrl: profile.html_url,
+      },
+      repos: refreshableRepos,
+      feed,
     },
-    languageTotals: base.languageTotals,
-    topRepos,
-    feed,
-    weeklyCommits,
-  };
+    new Date().toISOString()
+  );
 }
 
 function summarize(e: { type: string; payload: Record<string, unknown> }): string {
@@ -175,15 +191,7 @@ async function detail(e: { type: string; repo?: { name: string }; payload: Recor
     case "PullRequestEvent": {
       const pullRequest = payload.pull_request as { title?: string; number?: number } | undefined;
       if (pullRequest?.title) return pullRequest.title;
-      if (pullRequest?.number && e.repo?.name) {
-        try {
-          const pull = await get<{ title: string }>(`/repos/${e.repo.name}/pulls/${pullRequest.number}`);
-          return pull.title;
-        } catch {
-          return `pull request #${pullRequest.number}`;
-        }
-      }
-      return "pull request details unavailable";
+      return pullRequest?.number ? `pull request #${pullRequest.number}` : "pull request details unavailable";
     }
     case "IssuesEvent":
       return ((payload.issue as { title?: string } | undefined)?.title) ?? "issue activity";
@@ -222,25 +230,4 @@ function eventUrl(e: { type: string; repo?: { name: string }; payload: Record<st
     return (payload.release as { html_url?: string } | undefined)?.html_url;
   }
   return undefined;
-}
-
-function buildWeeklyCommits(events: { type: string; created_at: string; payload: Record<string, unknown> }[]) {
-  const now = new Date();
-  const weeks = Array.from({ length: 52 }, (_, index) => {
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - (51 - index) * 7);
-    return { weekStart: weekStart.toISOString().slice(0, 10), commits: 0 };
-  });
-
-  for (const event of events) {
-    if (event.type !== "PushEvent") continue;
-    const diffWeeks = Math.floor((now.getTime() - new Date(event.created_at).getTime()) / (7 * 24 * 60 * 60 * 1000));
-    const index = 51 - diffWeeks;
-    if (index >= 0 && index < weeks.length) {
-      const commits = event.payload.commits as unknown[] | undefined;
-      weeks[index].commits += Math.max(1, commits?.length ?? 0);
-    }
-  }
-
-  return weeks;
 }

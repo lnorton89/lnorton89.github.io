@@ -3,8 +3,8 @@
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { formatNumber } from "@/lib/format";
 import type { ContributionsCollection, WeeklyCommits } from "@/lib/types";
-import { useLiveDataStore } from "@/store/live-data-store";
 
 function intensity(count: number, max: number): number {
   if (max <= 0) return 0;
@@ -36,10 +36,10 @@ export default function ContributionHeatmap({
   weeklyFallback: WeeklyCommits[];
   embedded?: boolean;
 }) {
-  const live = useLiveDataStore((state) => state.liveSnapshot);
-  const liveWeeklyFallback = live?.weeklyCommits ?? weeklyFallback;
   const [hovered, setHovered] = useState<{ label: string; x: number; y: number } | null>(null);
   const [windowWeeks, setWindowWeeks] = useState(52);
+  const [focusedCell, setFocusedCell] = useState<string | null>(null);
+  const fallbackComplete = weeklyFallback.every((week) => week.commits !== null);
 
   function showTooltipAt(x: number, y: number, label: string) {
     setHovered({ label, x: x + 12, y: y - 12 });
@@ -65,22 +65,22 @@ export default function ContributionHeatmap({
         ),
       };
     }
-    const weeks = liveWeeklyFallback.slice(-windowWeeks);
-    const max = Math.max(1, ...weeks.map((w) => w.commits));
+    const weeks = weeklyFallback.slice(-windowWeeks);
+    const max = Math.max(1, ...weeks.map((w) => w.commits ?? 0));
     return {
       max,
       columns: weeks.map((w) => [
         ...Array.from({ length: 7 }, (_, weekday) => ({
           key: `${w.weekStart}-${weekday}`,
-          count: weekday === 3 ? w.commits : 0,
+          count: weekday === 3 ? (w.commits ?? 0) : 0,
           label:
             weekday === 3
-              ? `${w.commits} commit${w.commits === 1 ? "" : "s"} in the week of ${w.weekStart}`
+          ? `${w.commits ?? 0} commit${w.commits === 1 ? "" : "s"} in the week of ${w.weekStart}`
               : `No commits in the week of ${w.weekStart}`,
         })),
       ]),
     };
-  }, [contributions, liveWeeklyFallback, windowWeeks]);
+  }, [contributions, weeklyFallback, windowWeeks]);
 
   const total = grid.columns.reduce((sum, column) => sum + column.reduce((columnTotal, cell) => columnTotal + cell.count, 0), 0);
 
@@ -99,7 +99,10 @@ export default function ContributionHeatmap({
               <button
                 key={weeks}
                 type="button"
-                onClick={() => setWindowWeeks(weeks)}
+                onClick={() => {
+                  setWindowWeeks(weeks);
+                  setFocusedCell(null);
+                }}
                 aria-pressed={windowWeeks === weeks}
                 className={`rounded px-1.5 py-1 font-mono text-[10px] transition-colors ${
                   windowWeeks === weeks ? "bg-amber/15 text-amber" : "text-text-faint hover:text-text"
@@ -110,38 +113,21 @@ export default function ContributionHeatmap({
             ))}
         </div>
       </div>
-      <div
-        role="grid"
-        aria-label="Contribution activity by day"
-        className="grid w-full min-w-[560px] grid-flow-col auto-cols-fr gap-[3px] overflow-x-auto scroll-thin pb-2"
-      >
-        {grid.columns.map((col, ci) => (
-          <div key={ci} className="grid grid-rows-7 gap-[3px] min-w-[9px]">
-            {col.map((cell, ri) => (
-              <motion.div
-                key={cell.key}
-                role="gridcell"
-                tabIndex={0}
-                aria-label={cell.label}
-                onPointerEnter={(event) => showTooltipAt(event.clientX, event.clientY, cell.label)}
-                onPointerMove={(event) => showTooltipAt(event.clientX, event.clientY, cell.label)}
-                onPointerLeave={() => setHovered(null)}
-                onFocus={(event) => showTooltipForFocus(event.currentTarget, cell.label)}
-                onBlur={() => setHovered(null)}
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{
-                  duration: 0.22,
-                  ease: [0.22, 1, 0.36, 1],
-                  delay: (ci * col.length + ri) * 0.006,
-                }}
-                className={`aspect-square w-full cursor-pointer rounded-[2px] transition-[filter,box-shadow] hover:brightness-125 hover:ring-1 hover:ring-cyan/70 focus-visible:ring-1 focus-visible:ring-cyan ${CELL_STYLES[intensity(cell.count, grid.max)]}`}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
+      {!contributions && !fallbackComplete ? (
+        <p className="flex min-h-[120px] items-center justify-center text-center font-mono text-xs text-text-faint">
+          Contribution activity is unavailable because the build-time commit dataset is incomplete.
+        </p>
+      ) : (
+      <ContributionGrid
+        columns={grid.columns}
+        max={grid.max}
+        focusedCell={focusedCell}
+        onFocusCell={setFocusedCell}
+        onHover={showTooltipAt}
+        onHoverEnd={() => setHovered(null)}
+        onFocusShowTooltip={showTooltipForFocus}
+      />
+      )}
       <p className="mt-2 text-right font-mono text-[11px] text-text-faint sm:hidden">
         scroll horizontally to explore
       </p>
@@ -159,7 +145,7 @@ export default function ContributionHeatmap({
         )}
       <div className="mt-auto flex items-center justify-between gap-3 pt-3">
         <span className="font-mono text-xs text-text-muted">
-          {contributions ? `${total.toLocaleString()} contributions` : "Approximate public push activity"}
+          {contributions ? `${formatNumber(total)} contributions` : "Approximate public push activity"}
         </span>
         <div className="flex items-center gap-1.5">
         <span className="font-mono text-[11px] text-text-faint mr-1">less</span>
@@ -168,6 +154,101 @@ export default function ContributionHeatmap({
         ))}
         <span className="font-mono text-[11px] text-text-faint ml-1">more</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+type HeatmapCell = { key: string; count: number; label: string };
+type HeatmapColumn = HeatmapCell[];
+
+// Renders the heatmap with proper grid semantics: DOM is row-major (one role
+// "row" per weekday) while CSS places each cell into its visual column so
+// weeks stay vertical. A single roving tab stop plus arrow-key movement keeps
+// keyboard users out of hundreds of individual tab stops, and hover/focus
+// tooltips expose the per-day detail.
+function ContributionGrid({
+  columns,
+  max,
+  focusedCell,
+  onFocusCell,
+  onHover,
+  onHoverEnd,
+  onFocusShowTooltip,
+}: {
+  columns: HeatmapColumn[];
+  max: number;
+  focusedCell: string | null;
+  onFocusCell: (key: string | null) => void;
+  onHover: (x: number, y: number, label: string) => void;
+  onHoverEnd: () => void;
+  onFocusShowTooltip: (element: HTMLElement, label: string) => void;
+}) {
+  const rows = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, ri) =>
+        columns
+          .map((column) => column[ri])
+          .filter((cell): cell is HeatmapCell => Boolean(cell))
+      ),
+    [columns]
+  );
+
+  return (
+    <div className="w-full overflow-x-auto scroll-thin pb-2">
+      <div
+        role="grid"
+        aria-label="Contribution activity by day"
+        aria-rowcount={rows.length}
+        aria-colcount={columns.length}
+        className="grid w-full min-w-[560px] auto-cols-fr grid-flow-col grid-rows-7 gap-[3px]"
+      >
+      {rows.map((row, ri) => (
+        <div key={ri} role="row" aria-rowindex={ri + 1} className="contents">
+          {row.map((cell, ci) => (
+            <motion.div
+              key={cell.key}
+              role="gridcell"
+              aria-colindex={ci + 1}
+              data-cell-key={cell.key}
+              tabIndex={focusedCell === null ? (ri === 0 && ci === 0 ? 0 : -1) : focusedCell === cell.key ? 0 : -1}
+              aria-label={cell.label}
+              style={{ gridRow: ri + 1, gridColumn: ci + 1 }}
+              onPointerEnter={(event) => onHover(event.clientX, event.clientY, cell.label)}
+              onPointerMove={(event) => onHover(event.clientX, event.clientY, cell.label)}
+              onPointerLeave={onHoverEnd}
+              onFocus={(event) => onFocusShowTooltip(event.currentTarget, cell.label)}
+              onBlur={onHoverEnd}
+              onKeyDown={(event) => {
+                let nextCi = ci;
+                let nextRi = ri;
+                if (event.key === "ArrowLeft") nextCi -= 1;
+                else if (event.key === "ArrowRight") nextCi += 1;
+                else if (event.key === "ArrowUp") nextRi -= 1;
+                else if (event.key === "ArrowDown") nextRi += 1;
+                else return;
+                if (nextCi < 0 || nextCi >= columns.length || nextRi < 0 || nextRi >= rows.length) return;
+                const nextCell = columns[nextCi]?.[nextRi];
+                if (!nextCell) return;
+                event.preventDefault();
+                onFocusCell(nextCell.key);
+                window.requestAnimationFrame(() => {
+                  document.querySelector<HTMLElement>(`[data-cell-key="${nextCell.key}"]`)?.focus();
+                });
+              }}
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{
+                duration: 0.22,
+                ease: [0.22, 1, 0.36, 1],
+                delay: (ci * rows.length + ri) * 0.006,
+              }}
+              className={`aspect-square w-full cursor-pointer rounded-[2px] transition-[filter,box-shadow] hover:brightness-125 hover:ring-1 hover:ring-cyan/70 focus-visible:ring-1 focus-visible:ring-cyan ${CELL_STYLES[intensity(cell.count, max)]}`}
+            />
+          ))}
+        </div>
+      ))}
       </div>
     </div>
   );

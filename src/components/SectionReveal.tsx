@@ -11,7 +11,7 @@ export default function SectionReveal({
   className?: string;
 }) {
   return (
-    <motion.section
+    <motion.div
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       viewport={{ once: true, margin: "-80px" }}
@@ -19,6 +19,6 @@ export default function SectionReveal({
       className={className}
     >
       {children}
-    </motion.section>
+    </motion.div>
   );
 }

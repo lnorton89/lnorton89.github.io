@@ -21,7 +21,7 @@ export default function LiveUpdateFeedback() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan opacity-60" />
             <Radio className="relative h-2 w-2" aria-hidden="true" />
           </span>
-          <span>live data updated</span>
+          <span>API refreshed</span>
           <Check className="h-3.5 w-3.5" aria-hidden="true" />
         </motion.div>
   ) : null;

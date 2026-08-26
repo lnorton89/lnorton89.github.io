@@ -10,6 +10,7 @@ import RepoGrid from "@/components/RepoGrid";
 import PinnedRepos from "@/components/PinnedRepos";
 import SectionReveal from "@/components/SectionReveal";
 import LiveUpdateFeedback from "@/components/LiveUpdateFeedback";
+import SnapshotStatus from "@/components/SnapshotStatus";
 import { Activity, FolderGit2 } from "lucide-react";
 import type { GithubSnapshot } from "@/lib/types";
 
@@ -40,6 +41,32 @@ export default function Home() {
   return (
     <main className="min-h-screen">
       <LiveUpdateFeedback />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "ProfilePage",
+                "@id": `${data.profile.htmlUrl}#profile-page`,
+                url: data.profile.htmlUrl,
+                mainEntity: { "@id": `${data.profile.htmlUrl}#person` },
+              },
+              {
+                "@type": "Person",
+                "@id": `${data.profile.htmlUrl}#person`,
+                name: data.profile.name || data.profile.login,
+                alternateName: `@${data.profile.login}`,
+                url: data.profile.htmlUrl,
+                image: data.profile.avatarUrl,
+                description: data.profile.bio || undefined,
+                sameAs: [data.profile.htmlUrl],
+              },
+            ],
+          }).replace(/</g, "\\u003c"),
+        }}
+      />
       <div className="mx-auto max-w-6xl px-6">
         <Hero data={data} />
 
@@ -62,7 +89,7 @@ export default function Home() {
               weeklyFallback={data.weeklyCommits}
               embedded
             />
-            <CommitActivityChart weekly={data.weeklyCommits} embedded />
+            <CommitActivityChart weekly={data.weeklyCommits} coverage={data.weeklyCommitsCoverage} embedded />
             </div>
           </div>
         </SectionReveal>
@@ -99,9 +126,7 @@ export default function Home() {
         </SectionReveal>
 
         <footer className="pb-16 pt-8 border-t border-hairline flex flex-wrap items-center justify-between gap-3 font-mono text-[11px] text-text-faint">
-          <span>
-            snapshot generated {new Date(data.generatedAt).toUTCString()}
-          </span>
+          <SnapshotStatus snapshot={data} />
           <span>
             built with Next.js, framer-motion, recharts &amp; the GitHub API
           </span>

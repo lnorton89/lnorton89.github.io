@@ -23,6 +23,32 @@ export function compactNumber(n: number): string {
   return new Intl.NumberFormat("en", { notation: "compact" }).format(n);
 }
 
+const numberFormatter = new Intl.NumberFormat("en-US");
+
+// Deterministic number formatting. The page is statically exported, so any
+// text rendered on the server must not depend on the viewer's locale — that
+// would break hydration for non-en-US visitors.
+export function formatNumber(n: number): string {
+  return numberFormatter.format(n);
+}
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+// Deterministic "Aug 2026" style date for server-rendered text.
+export function formatMonthYear(iso: string): string {
+  const date = new Date(iso);
+  return `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+}
+
+// Deterministic "Aug 25" style date for server-rendered text.
+export function formatShortDate(iso: string): string {
+  const date = new Date(iso);
+  return `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}`;
+}
+
 // A restrained, high-contrast-on-dark palette keyed by language name.
 // Falls back to a deterministic hash-based hue for anything not listed.
 const LANGUAGE_COLORS: Record<string, string> = {

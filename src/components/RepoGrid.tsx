@@ -5,15 +5,18 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Star, GitFork, ExternalLink, Clock3, ArrowDownAZ } from "lucide-react";
 import { useLiveDataStore } from "@/store/live-data-store";
-import { languageColor, relativeTime, compactNumber } from "@/lib/format";
+import { languageColor, relativeTime, compactNumber, formatNumber, formatShortDate } from "@/lib/format";
+import { filterRepos, sourceFileCount, type RepoSort } from "@/lib/repo-filter";
+import { useHydrated } from "@/lib/use-hydrated";
 import type { GithubSnapshot } from "@/lib/types";
-
-type RepoSort = "updated" | "stars" | "forks" | "name";
 
 export default function RepoGrid({ base }: { base: GithubSnapshot }) {
   const live = useLiveDataStore((s) => s.liveSnapshot);
   const selectedLanguage = useLiveDataStore((s) => s.selectedLanguage);
   const setSelectedLanguage = useLiveDataStore((s) => s.setSelectedLanguage);
+  const selectedTopic = useLiveDataStore((s) => s.selectedTopic);
+  const setSelectedTopic = useLiveDataStore((s) => s.setSelectedTopic);
+  const hydrated = useHydrated();
   const repos = (live ?? base).topRepos;
   const [visibleCount, setVisibleCount] = useState(9);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -25,19 +28,18 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
     x: number;
     y: number;
   } | null>(null);
-  const filteredRepos = repos
-    .filter((repo) => {
-      const matchesLanguage = !selectedLanguage || Object.keys(repo.languages ?? {}).includes(selectedLanguage);
-      const haystack = [repo.name, repo.description ?? "", ...repo.topics].join(" ").toLowerCase();
-      return matchesLanguage && (!search.trim() || haystack.includes(search.trim().toLowerCase()));
-    })
-    .sort((a, b) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      if (sortBy === "stars") return b.stars - a.stars;
-      if (sortBy === "forks") return b.forks - a.forks;
-      return new Date(b.pushedAt).getTime() - new Date(a.pushedAt).getTime();
-    });
+  const filteredRepos = filterRepos(repos, {
+    search,
+    language: selectedLanguage,
+    topic: selectedTopic,
+    sortBy,
+  });
   const visibleRepos = filteredRepos.slice(0, visibleCount);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setVisibleCount(9), 0);
+    return () => window.clearTimeout(timeout);
+  }, [search, selectedLanguage, selectedTopic, sortBy]);
 
   useEffect(() => {
     const sentinel = loadMoreRef.current;
@@ -99,11 +101,12 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
             </button>
           ))}
         </div>
-        {(selectedLanguage || search) && (
+        {(selectedLanguage || selectedTopic || search) && (
           <button
             type="button"
             onClick={() => {
               setSelectedLanguage(null);
+              setSelectedTopic(null);
               setSearch("");
             }}
             className="rounded border border-hairline px-2 py-1.5 font-mono text-[11px] text-text-muted transition-colors hover:border-cyan/50 hover:text-cyan"
@@ -116,6 +119,7 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
         <p>
           showing {visibleRepos.length} of {filteredRepos.length} repositories
           {selectedLanguage && <span className="text-cyan"> · {selectedLanguage}</span>}
+          {selectedTopic && <span className="text-cyan"> · #{selectedTopic}</span>}
         </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -123,15 +127,11 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
         const languages = Object.entries(repo.languages ?? {}).sort((a, b) => b[1] - a[1]);
         const languageTotal = languages.reduce((sum, [, bytes]) => sum + bytes, 0);
         const hasSelectedLanguage = languages.some(([language]) => language === selectedLanguage);
-        const fileCount = Object.values(repo.languageFiles ?? {}).reduce((sum, count) => sum + count, 0);
-        const loc = Math.max(1, Math.round(languages.reduce((sum, [, bytes]) => sum + bytes, 0) / 45));
+        const sourceFileCountValue = sourceFileCount(repo);
 
         return (
-        <motion.a
+        <motion.article
           key={repo.fullName}
-          href={repo.url}
-          target="_blank"
-          rel="noopener noreferrer"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, margin: "-40px" }}
@@ -143,10 +143,15 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
           }`}
         >
           <div className="flex items-start justify-between gap-2">
-            <h4 className="font-display text-[15px] font-semibold text-text truncate">
-              {repo.name}
-            </h4>
-            <ExternalLink className="h-3.5 w-3.5 text-text-faint shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <a
+              href={repo.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex min-w-0 items-start justify-between gap-2 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
+            >
+              <h4 className="truncate font-display text-[15px] font-semibold text-text">{repo.name}</h4>
+              <ExternalLink className="h-3.5 w-3.5 text-text-faint shrink-0 transition-opacity group-hover:text-cyan" />
+            </a>
           </div>
           <p className="text-xs text-text-muted line-clamp-2 min-h-[32px]">
             {repo.description || "No description — open repository"}
@@ -154,9 +159,20 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
           <div className="truncate font-mono text-[10px] text-text-faint">
             {repo.visibility} · {repo.openIssues} open issues · since {new Date(repo.createdAt).getUTCFullYear()}
           </div>
-          {repo.homepage && <div className="truncate font-mono text-[10px] text-cyan">{repo.homepage.replace(/^https?:\/\//, "")}</div>}
+          {repo.homepage && (
+            <a
+              href={repo.homepage}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="truncate font-mono text-[10px] text-cyan hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
+            >
+              Live site: {repo.homepage.replace(/^https?:\/\//, "")}
+            </a>
+          )}
           {!!repo.topics.length && <div className="truncate font-mono text-[10px] text-text-faint">#{repo.topics.join(" #")}</div>}
-          <div className="font-mono text-[10px] text-text-faint">{fileCount.toLocaleString()} files · ~{loc.toLocaleString()} LOC</div>
+          <div className="font-mono text-[10px] text-text-faint">
+            {sourceFileCountValue ? `${formatNumber(sourceFileCountValue)} source files` : "source files unavailable"}
+          </div>
           <div className="flex items-center gap-3 text-[11px] font-mono text-text-faint mt-auto pt-2 border-t border-hairline/60">
             {repo.language && (
               <span className="flex items-center gap-1.5 text-text-muted">
@@ -175,15 +191,17 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
               <GitFork className="h-3 w-3" />
               {compactNumber(repo.forks)}
             </span>
-            <span className="ml-auto">{relativeTime(repo.pushedAt)}</span>
+            <span className="ml-auto">{hydrated ? relativeTime(repo.pushedAt) : formatShortDate(repo.pushedAt)}</span>
           </div>
           <div className="flex h-1.5 w-full overflow-hidden rounded-full" aria-label="Language distribution">
             {languages.map(([language, bytes]) => (
-              <span
+              <button
                 key={language}
-                role="img"
-                tabIndex={0}
+                type="button"
+                title={`Filter by ${language}`}
+                aria-pressed={selectedLanguage === language}
                 aria-label={`${language} ${((bytes / languageTotal) * 100).toFixed(1)}%`}
+                onClick={() => setSelectedLanguage(selectedLanguage === language ? null : language)}
                 onPointerEnter={(event) =>
                   showLanguageTooltip(
                     `${repo.fullName}:${language}`,
@@ -192,10 +210,6 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
                     event.clientY
                   )
                 }
-                onClick={(event) => {
-                  event.preventDefault();
-                  setSelectedLanguage(selectedLanguage === language ? null : language);
-                }}
                 onPointerMove={(event) =>
                   showLanguageTooltip(
                     `${repo.fullName}:${language}`,
@@ -230,7 +244,7 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
               />
             ))}
           </div>
-        </motion.a>
+        </motion.article>
         );
       })}
       </div>

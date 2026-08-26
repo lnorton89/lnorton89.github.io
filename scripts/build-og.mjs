@@ -1,5 +1,4 @@
-import { writeFile } from "node:fs/promises";
-import { readFile } from "node:fs/promises";
+import { writeFile, readFile } from "node:fs/promises";
 import { createElement as h } from "react";
 import { fontsourceFontLoader } from "metaplate/fonts";
 import { createNodeOg } from "metaplate/node";
@@ -8,6 +7,12 @@ const snapshot = JSON.parse(await readFile("public/data/github.json", "utf8"));
 const { profile, feed, topRepos, languageTotals, contributions } = snapshot;
 const languages = Object.entries(languageTotals).sort((a, b) => b[1] - a[1]).slice(0, 4);
 const languageTotal = languages.reduce((sum, [, bytes]) => sum + bytes, 0);
+
+function clamp(text, max) {
+  if (!text) return "";
+  const value = String(text).trim();
+  return value.length > max ? `${value.slice(0, max - 1).trimEnd()}...` : value;
+}
 
 let avatarSrc;
 try {
@@ -69,7 +74,7 @@ const og = createNodeOg({
         ),
         h("div", { style: { display: "flex", marginLeft: "auto", alignItems: "center", gap: 8, color: "#e8a33d", fontSize: 16 } },
           h("div", { style: { width: 10, height: 10, borderRadius: 5, display: "flex", background: "#e8a33d" } }),
-          "BUILDING NOW"
+          "GITHUB ACTIVITY"
         )
       ),
       h(
@@ -81,8 +86,8 @@ const og = createNodeOg({
           h("div", { style: { display: "flex", fontSize: 14, color: "#8b8f98" } }, "RECENTLY ACTIVE"),
           ...value.topRepos.slice(0, 3).map((repo) =>
             h("div", { key: repo.fullName, style: { display: "flex", flexDirection: "column", marginTop: 12, padding: "13px 16px", border: "1px solid #24272e", borderRadius: 8, background: "#131519" } },
-              h("div", { style: { display: "flex", fontSize: 19, fontWeight: 700, color: "#e8e6e1" } }, repo.name),
-              h("div", { style: { display: "flex", marginTop: 5, fontSize: 13, color: "#8b8f98" } }, repo.description || "Active GitHub repository")
+              h("div", { style: { display: "flex", fontSize: 19, fontWeight: 700, color: "#e8e6e1" } }, clamp(repo.name, 40)),
+              h("div", { style: { display: "flex", marginTop: 5, fontSize: 13, color: "#8b8f98" } }, clamp(repo.description || "Active GitHub repository", 90))
             )
           )
         ),
@@ -93,7 +98,7 @@ const og = createNodeOg({
           ...value.feed.slice(0, 4).map((item) =>
             h("div", { key: item.id, style: { display: "flex", marginTop: 14, fontSize: 14, color: "#e8e6e1" } },
               h("div", { style: { display: "flex", width: 7, height: 7, margin: "6px 10px 0 0", borderRadius: 4, background: item.type === "PushEvent" ? "#3ddad7" : "#e8a33d" } }),
-              `${item.repo.split("/").pop()} · ${item.detail || item.summary}`
+              `${clamp(item.repo.split("/").pop(), 24)} - ${clamp(item.detail || item.summary, 80)}`
             )
           )
         )
@@ -104,7 +109,7 @@ const og = createNodeOg({
         h("div", { style: { display: "flex", gap: 28, fontSize: 15, color: "#8b8f98" } },
           h("div", { style: { display: "flex", flexDirection: "column", gap: 3 } }, h("b", { style: { color: "#e8e6e1", fontSize: 25 } }, profile.publicRepos), "PUBLIC REPOS"),
           h("div", { style: { display: "flex", flexDirection: "column", gap: 3 } }, h("b", { style: { color: "#e8e6e1", fontSize: 25 } }, profile.followers), "FOLLOWERS"),
-          h("div", { style: { display: "flex", flexDirection: "column", gap: 3 } }, h("b", { style: { color: "#e8e6e1", fontSize: 25 } }, contributions?.contributionCalendar.totalContributions?.toLocaleString() || "—"), "CONTRIBUTIONS")
+          h("div", { style: { display: "flex", flexDirection: "column", gap: 3 } }, h("b", { style: { color: "#e8e6e1", fontSize: 25 } }, contributions?.contributionCalendar.totalContributions?.toLocaleString() || "n/a"), "CONTRIBUTIONS")
         ),
         h("div", { style: { display: "flex", flex: 1, flexDirection: "column", gap: 7 } },
           h("div", { style: { display: "flex", fontSize: 13, color: "#8b8f98" } }, "LANGUAGES IN PLAY"),

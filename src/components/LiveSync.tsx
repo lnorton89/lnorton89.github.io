@@ -5,12 +5,14 @@ import { Check, RefreshCw } from "lucide-react";
 import { fetchLiveSnapshot, GithubApiError } from "@/lib/fetch-live";
 import { useLiveDataStore } from "@/store/live-data-store";
 import { relativeTime } from "@/lib/format";
+import { useHydrated } from "@/lib/use-hydrated";
 import type { GithubSnapshot } from "@/lib/types";
 
 export default function LiveSync({ base }: { base: GithubSnapshot }) {
   const setLiveSnapshot = useLiveDataStore((s) => s.setLiveSnapshot);
   const lastSyncedAt = useLiveDataStore((s) => s.lastSyncedAt);
   const updateVersion = useLiveDataStore((s) => s.updateVersion);
+  const hydrated = useHydrated();
 
   const { refetch, isFetching, isError, error } = useQuery({
     queryKey: ["live-github-snapshot", base.profile.login],
@@ -19,11 +21,23 @@ export default function LiveSync({ base }: { base: GithubSnapshot }) {
       setLiveSnapshot(snapshot);
       return snapshot;
     },
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 15 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    enabled: false,
+    staleTime: 0,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    // A manual refresh is user-initiated; retrying a rate-limited request only
+    // burns more of the shared unauthenticated budget. Other transient failures
+    // may retry once.
+    retry: (failureCount, error) => {
+      if (error instanceof GithubApiError && error.status === 403) return false;
+      return failureCount < 1;
+    },
   });
-  const isRateLimited = error instanceof GithubApiError && error.status === 403;
+  const apiError = error instanceof GithubApiError ? error : null;
+  const isRateLimited = apiError?.status === 403;
+  const rateLimitReset = isRateLimited && apiError?.rateLimitReset
+    ? new Date(Number(apiError.rateLimitReset) * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : null;
 
   return (
     <div className="flex items-center gap-3 font-mono text-xs text-text-faint">
@@ -44,11 +58,13 @@ export default function LiveSync({ base }: { base: GithubSnapshot }) {
       <span>
         {isError
           ? isRateLimited
-            ? "GitHub API limit reached — try later"
+            ? `GitHub API limit reached${rateLimitReset ? ` — after ${rateLimitReset}` : " — try later"}`
             : "Sync failed — try again later"
           : lastSyncedAt
-            ? `${updateVersion > 0 ? "live update" : "synced"} ${relativeTime(lastSyncedAt)}`
-            : `Snapshot built ${relativeTime(base.generatedAt)}`}
+            ? `${updateVersion > 0 ? "API refreshed" : "synced"} ${relativeTime(lastSyncedAt)}`
+            : hydrated
+              ? `Snapshot built ${relativeTime(base.generatedAt)}`
+              : `Snapshot built ${new Date(base.generatedAt).toUTCString()}`}
       </span>
     </div>
   );
