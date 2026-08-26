@@ -31,7 +31,7 @@ type GroupedFeedItem = FeedItem & {
   activities: FeedItem[];
   commits: FeedCommit[];
 };
-type FeedFilter = "all" | "push" | "pull" | "issue" | "release" | "create";
+type FeedFilter = "all" | "push" | "pull" | "issue" | "release" | "create" | "star";
 
 const FEED_FILTERS: Array<{ value: FeedFilter; label: string; types?: string[] }> = [
   { value: "all", label: "all" },
@@ -40,6 +40,7 @@ const FEED_FILTERS: Array<{ value: FeedFilter; label: string; types?: string[] }
   { value: "issue", label: "issues/comments", types: ["IssuesEvent", "IssueCommentEvent"] },
   { value: "release", label: "releases", types: ["ReleaseEvent"] },
   { value: "create", label: "created", types: ["CreateEvent"] },
+  { value: "star", label: "stars", types: ["WatchEvent"] },
 ];
 
 function groupByRepository(feed: FeedItem[]): GroupedFeedItem[] {
@@ -232,7 +233,7 @@ export default function TerminalFeed({ base }: { base: GithubSnapshot }) {
     ? data.feed.filter((item) => activeFilter.types?.includes(item.type))
     : data.feed;
   const items = groupByRepository(filteredFeed).slice(0, 24);
-  const repositoryCount = new Set(data.feed.map((item) => item.repo)).size;
+  const repositoryCount = new Set(filteredFeed.map((item) => item.repo)).size;
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const hydrated = useSyncExternalStore(
     () => () => {},
@@ -266,7 +267,10 @@ export default function TerminalFeed({ base }: { base: GithubSnapshot }) {
               key={entry.value}
               type="button"
               aria-pressed={filter === entry.value}
-              onClick={() => setFilter(entry.value)}
+              onClick={() => {
+                setFilter(entry.value);
+                setExpandedId(null); // a filter change may hide the expanded entry
+              }}
               className={`rounded border px-2 py-1 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan ${
                 filter === entry.value
                   ? "border-cyan/40 bg-cyan/10 text-cyan"

@@ -224,7 +224,9 @@ function eventUrl(e: { type: string; repo?: { name: string }; payload: Record<st
     return (payload.issue as { html_url?: string } | undefined)?.html_url;
   }
   if (e.type === "IssueCommentEvent") {
-    return (payload.issue as { html_url?: string } | undefined)?.html_url;
+    const comment = payload.comment as { html_url?: string } | undefined;
+    const issue = payload.issue as { html_url?: string } | undefined;
+    return comment?.html_url ?? issue?.html_url;
   }
   if (e.type === "ReleaseEvent") {
     return (payload.release as { html_url?: string } | undefined)?.html_url;

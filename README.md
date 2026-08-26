@@ -12,11 +12,13 @@ refreshed client-side on demand.
 - React 19
 - Tailwind CSS v4 (design tokens in `src/app/globals.css`)
 - framer-motion — page-load choreography, scroll reveals, hover states
-- recharts — commit velocity area chart
-- @tanstack/react-query — client-side "sync now" refresh against the GitHub REST API
 - zustand — shared store so a single sync action updates every component
 - lucide-react — icons
-- vitest — focused tests for the snapshot-merge and filtering logic
+- vitest — focused tests for snapshot merging, filtering, and stats logic
+- An explicit `idle → loading → success/error` state machine drives the manual
+  "Sync now" refresh (no query library, no polling)
+- The commit-velocity chart is a small dependency-free SVG component (no chart
+  library)
 
 ## How the data flows
 
@@ -24,21 +26,23 @@ refreshed client-side on demand.
 and writes a snapshot to `public/data/github.json`:
 
 - Profile, repos, languages, and recent public events via the REST API
-- Per-repository weekly commit statistics via `repos/{owner}/{repo}/stats/commit_activity`
+- Per-contributor weekly commit statistics via
+  `repos/{owner}/{repo}/stats/contributors`, filtered to the configured
+  `GH_USERNAME` so the commit chart shows only commits GitHub attributes to
+  this account (never repository-wide activity)
 - The real contribution calendar via the GraphQL API, **only if a token is
   available** (`GH_PAT` or the Actions-provided `GITHUB_TOKEN`) — without one,
-  the heatmap falls back to the build-time commit-statistics view, clearly
-  labeled as such
+  the heatmap shows an explicitly weekly commit view labeled as such, never
+  fabricated daily cells
 
 The page reads that JSON at build time (`fs.readFileSync`, no client fetch
 needed for first paint). A "sync now" button manually re-fetches only the
 profile, repository metadata, and recent public events directly from the
-browser via TanStack Query — three requests in total. Those fields merge over
-the build snapshot by repository `fullName` while its enriched language,
-source-file, contribution, and commit-history data is preserved. Browser
-refreshes are subject to GitHub's unauthenticated 60 req/hr per-IP limit; a
-rate-limited refresh reports the failure and leaves the existing snapshot
-untouched.
+browser — three requests in total. Those fields merge over the build snapshot
+by repository `fullName` while its enriched language, recognized-file,
+contribution, and commit-history data is preserved. Browser refreshes are
+subject to GitHub's unauthenticated 60 req/hr per-IP limit; a rate-limited
+refresh reports the failure and leaves the existing snapshot untouched.
 
 ## Local development
 
@@ -59,10 +63,11 @@ npm test
 ```
 
 Runs the Vitest suite in `tests/` covering the snapshot-merge behavior (a
-client refresh must never overwrite build-time language/source-file data, and
-failed refreshes must not replace the base snapshot), repository filtering,
-and file-metric formatting (missing tree data stays "unavailable" rather than
-becoming a fake zero or estimate).
+client refresh must never overwrite build-time language/recognized-file data,
+and failed refreshes must not replace the base snapshot), repository and
+activity filtering, per-contributor commit-statistics selection (including
+202/204/incomplete-coverage handling), rate-limit classification, pinned-repo
+metadata overlay, and language-metric normalization.
 
 ## Deploying to GitHub Pages
 
@@ -84,5 +89,6 @@ becoming a fake zero or estimate).
 - The public Events API returns at most 300 events from roughly the previous
   30 days. It is used for recent activity, not as a complete contribution
   history.
-- Repository source-file counts come from recognized file extensions in the
-  recursive Git tree; they are not a count of every file in a repository.
+- Repository recognized-file counts come from file extensions matched in the
+  recursive Git tree; they are not a count of every file in a repository. A
+  truncated tree is marked incomplete rather than presented as a full count.

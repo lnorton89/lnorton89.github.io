@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { filterRepos, sourceFileCount } from "../src/lib/repo-filter";
+import { filterRepos, trackedFileCount } from "../src/lib/repo-filter";
 import type { RepoSummary } from "../src/lib/types";
 
 function repo(overrides: Partial<RepoSummary> & { name: string; fullName: string }): RepoSummary {
@@ -60,18 +60,24 @@ describe("filterRepos", () => {
   });
 });
 
-describe("sourceFileCount", () => {
+describe("trackedFileCount", () => {
   it("returns the total of recognized language files", () => {
-    expect(sourceFileCount(repo({ name: "a", fullName: "u/a", languageFiles: { TypeScript: 4, Go: 6 } }))).toBe(10);
+    expect(trackedFileCount(repo({ name: "a", fullName: "u/a", languageFiles: { TypeScript: 4, Go: 6 } }))).toBe(10);
   });
 
   it("returns null when there is no tree data instead of faking a zero", () => {
-    expect(sourceFileCount(repo({ name: "a", fullName: "u/a", languageFiles: undefined }))).toBeNull();
-    expect(sourceFileCount(repo({ name: "a", fullName: "u/a", languageFiles: {} }))).toBeNull();
+    expect(trackedFileCount(repo({ name: "a", fullName: "u/a", languageFiles: undefined }))).toBeNull();
+    expect(trackedFileCount(repo({ name: "a", fullName: "u/a", languageFiles: {} }))).toBeNull();
+  });
+
+  it("returns null when the tree was truncated so a partial count is never authoritative", () => {
+    expect(
+      trackedFileCount(repo({ name: "a", fullName: "u/a", languageFiles: { TypeScript: 4 }, languageFilesComplete: false }))
+    ).toBeNull();
   });
 
   it("never estimates from byte counts", () => {
-    const result = sourceFileCount(repo({ name: "a", fullName: "u/a", languages: { TypeScript: 90000 }, languageFiles: undefined }));
+    const result = trackedFileCount(repo({ name: "a", fullName: "u/a", languages: { TypeScript: 90000 }, languageFiles: undefined }));
     expect(result).toBeNull();
   });
 });

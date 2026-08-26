@@ -32,17 +32,21 @@ export interface RefreshableRepo {
 }
 
 // Fields computed at build time (language byte counts from /languages and
-// source-file counts from recursive trees). The browser refresh never touches
+// recognized-file counts from recursive trees). The browser refresh never touches
 // these; they must survive a manual refresh untouched.
 export interface EnrichedRepo {
   languages?: Record<string, number>;
   languageFiles?: Record<string, number>;
+  /** False when the recursive Git tree was truncated or failed to fetch. */
+  languageFilesComplete?: boolean;
 }
 
 export interface RepoSummary extends RefreshableRepo, EnrichedRepo {}
 
 export interface PinnedRepo {
   name: string;
+  /** Repository identity (owner/name), used to match refreshed metadata. */
+  fullName: string;
   description: string | null;
   url: string;
   stargazerCount: number;
@@ -119,6 +123,7 @@ export interface GithubSnapshot {
   weeklyCommitsCoverage: WeeklyCommitsCoverage;
   contributions: ContributionsCollection | null;
   hasLiveContributionData: boolean;
+  scope: SnapshotScope;
 }
 
 export interface WeeklyCommitsCoverage {
@@ -127,4 +132,15 @@ export interface WeeklyCommitsCoverage {
   coveredRepos: number;
   pendingRepos: number;
   failedRepos: number;
+}
+
+// Explains what the dashboard's tracked repository set covers versus the full
+// profile, so labels never imply all public repositories were aggregated.
+export interface SnapshotScope {
+  /** profile.public_repos — the full public repository count. */
+  totalPublicRepos: number;
+  /** Non-fork, non-archived repositories that the dashboard actually tracks. */
+  trackedRepos: number;
+  excludedForks: number;
+  excludedArchived: number;
 }

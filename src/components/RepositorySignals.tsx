@@ -2,6 +2,7 @@
 
 import { GitFork, Hash, Languages, Star, CircleDot } from "lucide-react";
 import { formatNumber } from "@/lib/format";
+import { revealRepositorySection } from "@/lib/reveal-repositories";
 import type { RepoSummary } from "@/lib/types";
 import { useLiveDataStore } from "@/store/live-data-store";
 
@@ -22,6 +23,12 @@ export default function RepositorySignals({ repos }: { repos: RepoSummary[] }) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8);
 
+  const toggleTopic = (topic: string) => {
+    const next = selectedTopic === topic ? null : topic;
+    setSelectedTopic(next);
+    if (next) revealRepositorySection();
+  };
+
   const stats = [
     { label: "stars earned", value: stars, icon: Star, color: "text-amber" },
     { label: "community forks", value: forks, icon: GitFork, color: "text-cyan" },
@@ -37,7 +44,7 @@ export default function RepositorySignals({ repos }: { repos: RepoSummary[] }) {
           Repository signals
         </h2>
         <p className="mt-1 font-mono text-[11px] text-text-faint">
-          a quick read on the wider project footprint
+          aggregated across {formatNumber(displayedRepos.length)} active original repositories
         </p>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -57,7 +64,7 @@ export default function RepositorySignals({ repos }: { repos: RepoSummary[] }) {
               key={topic}
               type="button"
               aria-pressed={selectedTopic === topic}
-              onClick={() => setSelectedTopic(selectedTopic === topic ? null : topic)}
+              onClick={() => toggleTopic(topic)}
               className={`rounded-full border px-2 py-1 font-mono text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan ${
                 selectedTopic === topic
                   ? "border-cyan/50 bg-cyan/10 text-cyan"

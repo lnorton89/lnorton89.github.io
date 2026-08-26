@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { Star, GitFork, ExternalLink, Clock3, ArrowDownAZ } from "lucide-react";
 import { useLiveDataStore } from "@/store/live-data-store";
 import { languageColor, relativeTime, compactNumber, formatNumber, formatShortDate } from "@/lib/format";
-import { filterRepos, sourceFileCount, type RepoSort } from "@/lib/repo-filter";
+import { filterRepos, trackedFileCount, type RepoSort } from "@/lib/repo-filter";
 import { useHydrated } from "@/lib/use-hydrated";
 import type { GithubSnapshot } from "@/lib/types";
 
@@ -101,6 +101,31 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
             </button>
           ))}
         </div>
+      </div>
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 font-mono text-[11px] text-text-faint" aria-live="polite">
+        <p>
+          showing {visibleRepos.length} of {filteredRepos.length} repositories
+        </p>
+        {selectedLanguage && (
+          <button
+            type="button"
+            onClick={() => setSelectedLanguage(null)}
+            aria-label={`Clear ${selectedLanguage} language filter`}
+            className="rounded border border-cyan/40 bg-cyan/10 px-1.5 py-0.5 text-cyan transition-colors hover:bg-cyan/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
+          >
+            ✕ {selectedLanguage}
+          </button>
+        )}
+        {selectedTopic && (
+          <button
+            type="button"
+            onClick={() => setSelectedTopic(null)}
+            aria-label={`Clear #${selectedTopic} topic filter`}
+            className="rounded border border-cyan/40 bg-cyan/10 px-1.5 py-0.5 text-cyan transition-colors hover:bg-cyan/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
+          >
+            ✕ #{selectedTopic}
+          </button>
+        )}
         {(selectedLanguage || selectedTopic || search) && (
           <button
             type="button"
@@ -109,25 +134,18 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
               setSelectedTopic(null);
               setSearch("");
             }}
-            className="rounded border border-hairline px-2 py-1.5 font-mono text-[11px] text-text-muted transition-colors hover:border-cyan/50 hover:text-cyan"
+            className="rounded border border-hairline px-2 py-1 text-text-muted transition-colors hover:border-cyan/50 hover:text-cyan"
           >
-            clear filters
+            clear all
           </button>
         )}
-      </div>
-      <div className="mb-3 flex items-center justify-between gap-3 font-mono text-[11px] text-text-faint" aria-live="polite">
-        <p>
-          showing {visibleRepos.length} of {filteredRepos.length} repositories
-          {selectedLanguage && <span className="text-cyan"> · {selectedLanguage}</span>}
-          {selectedTopic && <span className="text-cyan"> · #{selectedTopic}</span>}
-        </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
       {visibleRepos.map((repo, i) => {
         const languages = Object.entries(repo.languages ?? {}).sort((a, b) => b[1] - a[1]);
         const languageTotal = languages.reduce((sum, [, bytes]) => sum + bytes, 0);
         const hasSelectedLanguage = languages.some(([language]) => language === selectedLanguage);
-        const sourceFileCountValue = sourceFileCount(repo);
+        const trackedFileCountValue = trackedFileCount(repo);
 
         return (
         <motion.article
@@ -171,7 +189,7 @@ export default function RepoGrid({ base }: { base: GithubSnapshot }) {
           )}
           {!!repo.topics.length && <div className="truncate font-mono text-[10px] text-text-faint">#{repo.topics.join(" #")}</div>}
           <div className="font-mono text-[10px] text-text-faint">
-            {sourceFileCountValue ? `${formatNumber(sourceFileCountValue)} source files` : "source files unavailable"}
+            {trackedFileCountValue ? `${formatNumber(trackedFileCountValue)} recognized files` : "file counts unavailable"}
           </div>
           <div className="flex items-center gap-3 text-[11px] font-mono text-text-faint mt-auto pt-2 border-t border-hairline/60">
             {repo.language && (

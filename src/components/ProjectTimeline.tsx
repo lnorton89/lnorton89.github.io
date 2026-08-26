@@ -13,9 +13,9 @@ export default function ProjectTimeline({ repos }: { repos: RepoSummary[] }) {
   const oldest = [...displayedRepos].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))[0];
   const newest = [...displayedRepos].sort((a, b) => +new Date(b.pushedAt) - +new Date(a.pushedAt))[0];
   const starred = [...displayedRepos].sort((a, b) => b.stars - a.stars)[0];
-  const spanYears = Math.max(0, new Date(newest.pushedAt).getUTCFullYear() - new Date(oldest.createdAt).getUTCFullYear());
+  const trackedSince = new Date(oldest.createdAt).getUTCFullYear();
   const milestones = [
-    { label: "oldest public project", repo: oldest, date: oldest.createdAt, icon: Calendar, color: "text-text-muted" },
+    { label: "oldest tracked project", repo: oldest, date: oldest.createdAt, icon: Calendar, color: "text-text-muted" },
     { label: "most recently active", repo: newest, date: newest.pushedAt, icon: Clock3, color: "text-cyan" },
     { label: "most starred", repo: starred, date: null, icon: Star, color: "text-amber" },
   ];
@@ -28,9 +28,9 @@ export default function ProjectTimeline({ repos }: { repos: RepoSummary[] }) {
             <Waypoints className="h-4 w-4 text-cyan" aria-hidden="true" />
             Project timeline
           </h2>
-          <p className="mt-1 font-mono text-[11px] text-text-faint">the shape of the public build history</p>
+          <p className="mt-1 font-mono text-[11px] text-text-faint">the shape of the tracked build history</p>
         </div>
-        <span className="shrink-0 font-mono text-[11px] text-text-faint">{spanYears} years of public history</span>
+        <span className="shrink-0 font-mono text-[11px] text-text-faint">since {trackedSince}</span>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
         {milestones.map((milestone) => (

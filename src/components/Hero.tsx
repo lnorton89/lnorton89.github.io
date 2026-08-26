@@ -2,10 +2,10 @@
 
 import { motion, type Variants } from "framer-motion";
 import Image from "next/image";
-import { MapPin, Building2, Link as LinkIcon, FolderGit2, Users, Activity, CalendarDays, ExternalLink } from "lucide-react";
+import { MapPin, Building2, Link as LinkIcon, FolderGit2, Users, Activity, CalendarDays } from "lucide-react";
 import TerminalFeed from "@/components/TerminalFeed";
 import LiveSync from "@/components/LiveSync";
-import { compactNumber } from "@/lib/format";
+import { compactNumber, formatNumber } from "@/lib/format";
 import type { GithubSnapshot } from "@/lib/types";
 import { useLiveDataStore } from "@/store/live-data-store";
 
@@ -37,6 +37,8 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
         ]
       : []),
   ];
+  const { scope } = data;
+  const statGridCols = stats.length >= 4 ? "sm:grid-cols-4" : "sm:grid-cols-3";
 
   return (
     <section className="flex flex-col gap-8 pt-16 pb-16 lg:pt-20">
@@ -48,23 +50,15 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
       >
         <div className="min-w-0">
         <motion.div variants={item} className="mb-6 flex flex-wrap items-center gap-3">
-          <a
-            href={profile.htmlUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`Open ${profile.login}'s GitHub profile`}
-            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan"
-          >
-            <Image
-              src={profile.avatarUrl}
-              alt={profile.login}
-              width={44}
-              height={44}
-              loading="eager"
-              className="rounded-full border border-hairline"
-              unoptimized
-            />
-          </a>
+          <Image
+            src={profile.avatarUrl}
+            alt={profile.login}
+            width={44}
+            height={44}
+            loading="eager"
+            className="rounded-full border border-hairline"
+            unoptimized
+          />
           <a
             href={profile.htmlUrl}
             target="_blank"
@@ -72,15 +66,6 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
             className="font-mono text-sm text-text-muted hover:text-cyan focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
           >
             @{profile.login}
-          </a>
-          <a
-            href={profile.htmlUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded border border-hairline px-2 py-1 font-mono text-[10px] uppercase tracking-wide text-text-faint transition-colors hover:border-cyan/40 hover:text-cyan focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
-          >
-            <ExternalLink className="h-3 w-3" aria-hidden="true" />
-            GitHub profile
           </a>
         </motion.div>
 
@@ -127,7 +112,7 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
         </div>
 
         <div className="flex min-w-0 flex-col gap-7 lg:pb-1">
-          <motion.div variants={item} className="grid grid-cols-2 gap-x-4 gap-y-4 border-y border-hairline/70 py-4 sm:grid-cols-3 lg:grid-cols-5">
+          <motion.div variants={item} className={`grid grid-cols-2 gap-x-4 gap-y-4 border-y border-hairline/70 py-4 ${statGridCols}`}>
             {stats.map((s) => (
               <div key={s.label} className="min-w-0">
                 <div className="mb-1 flex items-center gap-2 text-text-faint">
@@ -140,6 +125,12 @@ export default function Hero({ data }: { data: GithubSnapshot }) {
               </div>
             ))}
           </motion.div>
+          <motion.p variants={item} className="font-mono text-[11px] text-text-faint">
+            {formatNumber(scope.trackedRepos)} active original repositories tracked ·{" "}
+            {formatNumber(scope.totalPublicRepos)} public total
+            {scope.excludedForks > 0 && ` (${formatNumber(scope.excludedForks)} forks excluded)`}
+            {scope.excludedArchived > 0 && ` · ${formatNumber(scope.excludedArchived)} archived excluded`}
+          </motion.p>
 
           <motion.div variants={item} className="flex items-center gap-3">
             <LiveSync base={data} />

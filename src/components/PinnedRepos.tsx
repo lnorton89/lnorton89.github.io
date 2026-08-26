@@ -3,20 +3,22 @@
 import { motion } from "framer-motion";
 import { ExternalLink, GitFork, Pin, Star } from "lucide-react";
 import { compactNumber, formatNumber } from "@/lib/format";
-import { sourceFileCount } from "@/lib/repo-filter";
+import { trackedFileCount } from "@/lib/repo-filter";
+import { overlayPinnedRepos } from "@/lib/pinned-overlay";
 import type { PinnedRepo } from "@/lib/types";
 import type { RepoSummary } from "@/lib/types";
 import { useLiveDataStore } from "@/store/live-data-store";
 
 function repoMetrics(repo: RepoSummary | undefined) {
   if (!repo) return null;
-  return { files: sourceFileCount(repo) };
+  return { files: trackedFileCount(repo) };
 }
 
 export default function PinnedRepos({ repos, allRepos }: { repos: PinnedRepo[] | null; allRepos: RepoSummary[] }) {
   const live = useLiveDataStore((state) => state.liveSnapshot);
   const liveRepos = live?.topRepos ?? allRepos;
-  if (!repos?.length) return null;
+  const displayed = overlayPinnedRepos(repos, liveRepos);
+  if (!displayed?.length) return null;
 
   return (
     <section className="flex h-full flex-col">
@@ -30,12 +32,12 @@ export default function PinnedRepos({ repos, allRepos }: { repos: PinnedRepo[] |
         </p>
       </div>
       <div className="grid flex-1 gap-4 sm:grid-cols-2">
-        {repos.map((repo, index) => (
+        {displayed.map((repo, index) => (
           (() => {
-            const metrics = repoMetrics(liveRepos.find((candidate) => candidate.name === repo.name));
+            const metrics = repoMetrics(liveRepos.find((candidate) => candidate.fullName === repo.fullName));
             return (
           <motion.article
-            key={repo.url}
+            key={repo.fullName}
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true, margin: "-40px" }}
@@ -75,7 +77,7 @@ export default function PinnedRepos({ repos, allRepos }: { repos: PinnedRepo[] |
               )}
               {!!repo.topics?.length && <div className="truncate font-mono text-[10px] text-text-faint">#{repo.topics.join(" #")}</div>}
               <div className="font-mono text-[10px] text-text-faint">
-                {metrics?.files ? `${formatNumber(metrics.files)} source files` : "source files unavailable"}
+                {metrics?.files ? `${formatNumber(metrics.files)} recognized files` : "file counts unavailable"}
               </div>
             </div>
             <div className="mt-auto flex items-center gap-3 border-t border-hairline/60 pt-2 font-mono text-[11px] text-text-faint">

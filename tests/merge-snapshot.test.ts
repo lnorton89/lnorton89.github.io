@@ -49,6 +49,7 @@ function baseSnapshot(): GithubSnapshot {
     weeklyCommitsCoverage: { complete: true, eligibleRepos: 1, coveredRepos: 1, pendingRepos: 0, failedRepos: 0 },
     contributions: null,
     hasLiveContributionData: false,
+    scope: { totalPublicRepos: 1, trackedRepos: 1, excludedForks: 0, excludedArchived: 0 },
   };
 }
 

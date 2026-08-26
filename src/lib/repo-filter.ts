@@ -41,10 +41,13 @@ export function filterRepos(
   });
 }
 
-// Total source files counted across a repo's recognized language files.
-// Returns null when the build-time tree data is unavailable so callers never
-// fall back to an estimated/zero file count.
-export function sourceFileCount(repo: RepoSummary): number | null {
+// Total files across a repo's recognized language-file map (files whose
+// extension maps to a language in the build-time tree walk). Returns null when
+// the tree data is unavailable so callers never fall back to an estimated or
+// zero count. When the tree was truncated (languageFilesComplete === false),
+// returns null as well so a partial count is never presented as authoritative.
+export function trackedFileCount(repo: RepoSummary): number | null {
+  if (repo.languageFilesComplete === false) return null;
   const files = Object.values(repo.languageFiles ?? {});
   if (files.length === 0) return null;
   const total = files.reduce((sum, count) => sum + count, 0);

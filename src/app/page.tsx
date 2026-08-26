@@ -12,6 +12,7 @@ import SectionReveal from "@/components/SectionReveal";
 import LiveUpdateFeedback from "@/components/LiveUpdateFeedback";
 import SnapshotStatus from "@/components/SnapshotStatus";
 import { Activity, FolderGit2 } from "lucide-react";
+import { getSiteConfig } from "@/lib/site";
 import type { GithubSnapshot } from "@/lib/types";
 
 function loadSnapshot(): GithubSnapshot | null {
@@ -38,6 +39,17 @@ export default function Home() {
     );
   }
 
+  // The structured data describes THIS website, not the GitHub profile. The
+  // GitHub profile belongs in sameAs.
+  const { rootUrl } = getSiteConfig();
+  const profilePageId = `${rootUrl}#profile-page`;
+  const personId = `${rootUrl}#person`;
+  const blog = data.profile.blog?.trim();
+  const blogUrl = blog
+    ? (blog.startsWith("http://") || blog.startsWith("https://") ? blog : `https://${blog}`)
+    : null;
+  const sameAs = [data.profile.htmlUrl, ...(blogUrl && blogUrl !== rootUrl ? [blogUrl] : [])];
+
   return (
     <main className="min-h-screen">
       <LiveUpdateFeedback />
@@ -49,19 +61,19 @@ export default function Home() {
             "@graph": [
               {
                 "@type": "ProfilePage",
-                "@id": `${data.profile.htmlUrl}#profile-page`,
-                url: data.profile.htmlUrl,
-                mainEntity: { "@id": `${data.profile.htmlUrl}#person` },
+                "@id": profilePageId,
+                url: rootUrl,
+                mainEntity: { "@id": personId },
               },
               {
                 "@type": "Person",
-                "@id": `${data.profile.htmlUrl}#person`,
+                "@id": personId,
                 name: data.profile.name || data.profile.login,
                 alternateName: `@${data.profile.login}`,
-                url: data.profile.htmlUrl,
+                url: rootUrl,
                 image: data.profile.avatarUrl,
                 description: data.profile.bio || undefined,
-                sameAs: [data.profile.htmlUrl],
+                sameAs,
               },
             ],
           }).replace(/</g, "\\u003c"),
@@ -89,14 +101,14 @@ export default function Home() {
               weeklyFallback={data.weeklyCommits}
               embedded
             />
-            <CommitActivityChart weekly={data.weeklyCommits} coverage={data.weeklyCommitsCoverage} embedded />
+            <CommitActivityChart weekly={data.weeklyCommits} coverage={data.weeklyCommitsCoverage} username={data.profile.login} embedded />
             </div>
           </div>
         </SectionReveal>
 
         <SectionReveal className="grid items-stretch gap-8 pb-14 lg:grid-cols-2">
           <PinnedRepos repos={data.pinnedRepos} allRepos={data.topRepos} />
-          <LanguageBreakdown languageTotals={data.languageTotals} repos={data.topRepos} />
+          <LanguageBreakdown repos={data.topRepos} />
         </SectionReveal>
 
         <SectionReveal className="pb-14">
@@ -108,7 +120,7 @@ export default function Home() {
         </SectionReveal>
 
         <SectionReveal className="pb-20">
-          <div className="flex items-baseline justify-between mb-4">
+          <div id="repositories" tabIndex={-1} className="scroll-mt-6 flex items-baseline justify-between mb-4 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan">
             <h2 className="flex items-center gap-2 font-display text-sm font-semibold tracking-wide text-text">
               <FolderGit2 className="h-4 w-4 text-cyan" aria-hidden="true" />
               Recently active repositories
@@ -128,7 +140,7 @@ export default function Home() {
         <footer className="pb-16 pt-8 border-t border-hairline flex flex-wrap items-center justify-between gap-3 font-mono text-[11px] text-text-faint">
           <SnapshotStatus snapshot={data} />
           <span>
-            built with Next.js, framer-motion, recharts &amp; the GitHub API
+            built with Next.js, framer-motion &amp; the GitHub API
           </span>
         </footer>
       </div>

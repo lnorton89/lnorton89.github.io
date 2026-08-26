@@ -8,6 +8,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import "dotenv/config"; // loads .env.local for local development; no-op in CI
+import { buildWeeklyScaffold, contributorCommitActivity, findContributorWeeks, finalizeWeeklyCommits } from "./commit-statistics.mjs";
 
 const USERNAME = process.env.GH_USERNAME;
 
@@ -47,6 +48,7 @@ const headers = {
 
 const repoLanguages = {};
 const repoLanguageFiles = {};
+const repoLanguageFilesComplete = {};
 
 function languageFromPath(filePath) {
   const name = filePath.split("/").pop().toLowerCase();
@@ -63,6 +65,31 @@ function languageFromPath(filePath) {
   if (name === "dockerfile") return "Dockerfile";
   if (name === "makefile") return "Makefile";
   return null;
+}
+
+// Counts recognized files from a repository's recursive tree. An empty
+// repository (409 "Git Repository is empty") is a quiet, expected state — the
+// file data is complete and empty rather than a noisy failure. A truncated
+// tree is recorded as incomplete so the UI never presents a partial count as
+// authoritative. `files` are keyed by language; `complete` reflects whether
+// the whole tree was walked.
+async function fetchRepoFiles(repo) {
+  const empty = { files: {}, complete: true };
+  if (!repo.default_branch || repo.size === 0) return empty;
+  try {
+    const tree = await rest(`/repos/${USERNAME}/${repo.name}/git/trees/${repo.default_branch}?recursive=1`);
+    const files = {};
+    for (const entry of tree.tree ?? []) {
+      if (entry.type !== "blob") continue;
+      const language = languageFromPath(entry.path);
+      if (language) files[language] = (files[language] || 0) + 1;
+    }
+    return { files, complete: !tree.truncated };
+  } catch (err) {
+    const body = String(err.message || "");
+    if (body.includes("409") && /empty/i.test(body)) return empty;
+    return { files: {}, complete: false };
+  }
 }
 
 async function rest(pathname, params = {}) {
@@ -121,24 +148,15 @@ async function main() {
     try {
       const langs = await rest(`/repos/${USERNAME}/${repo.name}/languages`);
       repoLanguages[repo.full_name] = langs;
-      try {
-        const tree = await rest(`/repos/${USERNAME}/${repo.name}/git/trees/${repo.default_branch}?recursive=1`);
-        const files = {};
-        for (const entry of tree.tree ?? []) {
-          if (entry.type !== "blob") continue;
-          const language = languageFromPath(entry.path);
-          if (language) files[language] = (files[language] || 0) + 1;
-        }
-        repoLanguageFiles[repo.full_name] = files;
-        if (tree.truncated) console.warn(`file tree truncated for ${repo.name}`);
-      } catch (err) {
-        console.warn(`file tree fetch failed for ${repo.name}:`, err.message);
-      }
+      const { files, complete } = await fetchRepoFiles(repo);
+      repoLanguageFiles[repo.full_name] = files;
+      repoLanguageFilesComplete[repo.full_name] = complete;
       for (const [lang, bytes] of Object.entries(langs)) {
         languageTotals[lang] = (languageTotals[lang] || 0) + bytes;
       }
     } catch (err) {
       console.warn(`languages fetch failed for ${repo.name}:`, err.message);
+      repoLanguageFilesComplete[repo.full_name] = false;
     }
   }
 
@@ -160,6 +178,7 @@ async function main() {
       visibility: r.visibility,
       languages: repoLanguages[r.full_name] || (r.language ? { [r.language]: 1 } : {}),
       languageFiles: repoLanguageFiles[r.full_name] || {},
+      languageFilesComplete: repoLanguageFilesComplete[r.full_name] ?? true,
     }));
 
   const events = await rest(`/users/${USERNAME}/events/public`, { per_page: 50 });
@@ -176,12 +195,13 @@ async function main() {
     )
   );
 
-  // Weekly commit counts for the last 52 weeks, derived from per-repository
-  // commit statistics. The Events API is limited to 300 events (about 30 days),
-  // so it is never used for historical coverage. If any eligible repository
-  // cannot be measured (statistics not yet generated after a bounded retry, or
-  // a fetch failure), the whole dataset is marked incomplete rather than
-  // presenting an authoritative-looking undercount.
+  // Weekly commit counts for the last 52 weeks attributed specifically to
+  // USERNAME, derived from per-repository contributor statistics
+  // (/stats/contributors). The Events API is limited to 300 events (about 30
+  // days) and is never used for historical coverage. If any eligible
+  // repository cannot be measured (statistics not yet generated after a bounded
+  // retry, or a fetch failure), the whole dataset is marked incomplete rather
+  // than presenting an authoritative-looking undercount.
   const { weeklyCommits, weeklyCommitsCoverage } = await buildWeeklyCommits(USERNAME, nonForkRepos);
   const commitCoverage = {
     complete: Boolean(weeklyCommitsCoverage?.complete),
@@ -215,6 +235,7 @@ async function main() {
             nodes {
               ... on Repository {
                 name
+                nameWithOwner
                 description
                 url
                 stargazerCount
@@ -266,6 +287,7 @@ async function main() {
     topRepos,
     pinnedRepos: contribData?.user?.pinnedItems?.nodes?.map((repo) => ({
       name: repo.name,
+      fullName: repo.nameWithOwner,
       description: repo.description,
       url: repo.url,
       stargazerCount: repo.stargazerCount,
@@ -282,6 +304,12 @@ async function main() {
     weeklyCommitsCoverage: commitCoverage,
     contributions: contribData?.user?.contributionsCollection ?? null,
     hasLiveContributionData: Boolean(contribData),
+    scope: {
+      totalPublicRepos: profile.public_repos,
+      trackedRepos: nonForkRepos.length,
+      excludedForks: repos.filter((r) => r.fork).length,
+      excludedArchived: repos.filter((r) => !r.fork && r.archived).length,
+    },
   };
 
   await mkdir(path.join(process.cwd(), "public", "data"), { recursive: true });
@@ -364,7 +392,7 @@ async function summarizeEvent(e) {
         ...base,
         summary: "commented on an issue",
         detail: e.payload.issue?.title || "issue comment",
-        url: e.payload.issue?.html_url,
+        url: e.payload.comment?.html_url ?? e.payload.issue?.html_url,
       };
     case "CreateEvent":
       return {
@@ -386,73 +414,28 @@ async function summarizeEvent(e) {
   }
 }
 
+// Collects weekly commit counts attributed to `username` across all eligible
+// repositories using the per-contributor statistics endpoint. Only commits the
+// account authored are counted; the endpoint is never used to present
+// repository-wide activity as personal commit velocity.
 async function buildWeeklyCommits(username, repos) {
-  const now = new Date();
-  const weeks = [];
-  for (let i = 51; i >= 0; i--) {
-    const weekStart = new Date(now);
-    weekStart.setUTCHours(0, 0, 0, 0);
-    weekStart.setUTCDate(weekStart.getUTCDate() - weekStart.getUTCDay() - i * 7);
-    weeks.push({ weekStart: weekStart.toISOString().slice(0, 10), commits: 0 });
-  }
-
-  let coveredRepos = 0;
-  let pendingRepos = 0;
-  let failedRepos = 0;
+  const scaffold = buildWeeklyScaffold();
+  const results = [];
   for (const repo of repos) {
     try {
-      const stats = await commitActivity(username, repo.name);
-      if (stats === null) {
-        pendingRepos += 1;
+      const contributors = await contributorCommitActivity(username, repo.name, { rest: REST, headers });
+      if (contributors === null) {
+        results.push({ status: "pending" });
         continue;
       }
-      if (!Array.isArray(stats)) {
-        failedRepos += 1;
-        continue;
-      }
-      coveredRepos += 1;
-      for (const week of stats) {
-        const weekStart = new Date(week.week * 1000).toISOString().slice(0, 10);
-        const target = weeks.find((entry) => entry.weekStart === weekStart);
-        if (target) target.commits += week.total || 0;
-      }
+      const { found, weeks } = findContributorWeeks(contributors, username);
+      results.push({ status: "covered", contributorWeeks: found ? weeks : [] });
     } catch (err) {
-      failedRepos += 1;
-      console.warn(`commit activity fetch failed for ${repo.name}:`, err.message);
+      results.push({ status: "failed" });
+      console.warn(`contributor commit activity fetch failed for ${repo.name}:`, err.message);
     }
   }
-  const complete = coveredRepos === repos.length;
-  return {
-    weeklyCommits: complete ? weeks : weeks.map((week) => ({ ...week, commits: null })),
-    weeklyCommitsCoverage: {
-      complete,
-      eligibleRepos: repos.length,
-      coveredRepos,
-      pendingRepos,
-      failedRepos,
-    },
-  };
-}
-
-async function commitActivity(username, repoName) {
-  const url = `${REST}/repos/${username}/${repoName}/stats/commit_activity`;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const res = await fetch(url, { headers });
-    if (res.status === 202) {
-      // GitHub is still generating statistics for this repository. Wait briefly
-      // and retry a bounded number of times instead of treating it as empty.
-      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1000));
-      continue;
-    }
-    if (res.status === 204) {
-      // Repository has no commit activity in the window: measured zero, not missing.
-      return [];
-    }
-    if (!res.ok) throw new Error(`GET ${url} -> ${res.status} ${await res.text()}`);
-    return res.json();
-  }
-  // Exhausted the bounded 202 retries: statistics are still generating.
-  return null;
+  return finalizeWeeklyCommits(scaffold, results);
 }
 
 main().catch((err) => {
