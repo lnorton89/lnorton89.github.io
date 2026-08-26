@@ -7,7 +7,7 @@ import type {
 } from "@/lib/types";
 
 // A manual "Sync now" can only ever supply these fields. Everything else in a
-// GithubSnapshot is build-time data (language bytes, source-file counts,
+// GithubSnapshot is build-time data (language bytes, recognized-file counts,
 // contribution calendar, weekly commit history) and is carried through unchanged.
 export interface ClientRefresh {
   profile: Profile;
@@ -15,12 +15,27 @@ export interface ClientRefresh {
   feed: FeedItem[];
 }
 
+function mergeRepo(baseRepo: RepoSummary | undefined, freshRepo: RefreshableRepo | undefined): RepoSummary | null {
+  const record = freshRepo ?? baseRepo;
+  if (!record) return null;
+
+  return {
+    ...baseRepo,
+    ...freshRepo,
+    ...record,
+    fullName: record.fullName,
+    // Build-only enrichment must always survive a browser refresh. Keep these
+    // together so completeness flags cannot silently drift away from the data
+    // they qualify.
+    languages: baseRepo?.languages,
+    languageFiles: baseRepo?.languageFiles,
+    languageFilesComplete: baseRepo?.languageFilesComplete,
+  };
+}
+
 // Merges freshly fetched repository metadata into the build-time records by
-// fullName instead of replacing them. Build-time enriched fields (languages,
-// languageFiles) always win; only the low-cost fields a browser refresh can
-// actually see come from `fresh`. A repo missing from the fresh response keeps
-// its build-time record instead of being dropped, so a manual refresh can never
-// make the grid smaller, emptier, or less complete than the initial snapshot.
+// fullName instead of replacing them. Build-time enrichment always wins; only
+// fields the cheap browser refresh can actually see come from `fresh`.
 export function mergeRepos(base: RepoSummary[], fresh: RefreshableRepo[]): RepoSummary[] {
   const baseByFullName = new Map(base.map((repo) => [repo.fullName, repo]));
   const freshByFullName = new Map(fresh.map((repo) => [repo.fullName, repo]));
@@ -28,20 +43,8 @@ export function mergeRepos(base: RepoSummary[], fresh: RefreshableRepo[]): RepoS
 
   const merged: RepoSummary[] = [];
   for (const fullName of allFullNames) {
-    const baseRepo = baseByFullName.get(fullName);
-    const freshRepo = freshByFullName.get(fullName);
-    const record = freshRepo ?? baseRepo;
-    if (!record) continue;
-    merged.push({
-      // Fresh metadata wins where the refresh can see it; the build-time
-      // record is otherwise the floor so no repository is ever lost.
-      ...record,
-      fullName,
-      // Re-assert the build-time enriched fields explicitly so a future
-      // refreshable field added to the spread can never clobber them.
-      languages: baseRepo?.languages,
-      languageFiles: baseRepo?.languageFiles,
-    });
+    const record = mergeRepo(baseByFullName.get(fullName), freshByFullName.get(fullName));
+    if (record) merged.push(record);
   }
 
   return merged.sort(
