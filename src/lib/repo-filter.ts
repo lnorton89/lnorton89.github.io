@@ -9,17 +9,18 @@ export interface RepoFilterOptions {
   sortBy: RepoSort;
 }
 
-// Pure, testable filtering used by RepoGrid. Language matches against the
-// build-time language map; topic against the repo's topics; search against the
-// name, description, and topics. Missing language maps simply fail to match.
+// Pure, testable filtering used by RepoGrid. Detailed build-time language maps
+// are preferred; a newly discovered repository can still match its known REST
+// primary language before the next scheduled build enriches it.
 export function filterRepos(
   repos: RepoSummary[],
   { search, language, topic, sortBy }: RepoFilterOptions
 ): RepoSummary[] {
   const term = search.trim().toLowerCase();
   const filtered = repos.filter((repo) => {
+    const detailedLanguages = Object.keys(repo.languages ?? {});
     const matchesLanguage =
-      !language || Object.keys(repo.languages ?? {}).includes(language);
+      !language || detailedLanguages.includes(language) || repo.language === language;
     const matchesTopic = !topic || repo.topics.includes(topic);
     const haystack = [repo.name, repo.description ?? "", ...repo.topics]
       .join(" ")
@@ -41,15 +42,10 @@ export function filterRepos(
   });
 }
 
-// Total files across a repo's recognized language-file map (files whose
-// extension maps to a language in the build-time tree walk). Returns null when
-// the tree data is unavailable so callers never fall back to an estimated or
-// zero count. When the tree was truncated (languageFilesComplete === false),
-// returns null as well so a partial count is never presented as authoritative.
+// Total files across a repo's recognized language-file map. A complete empty
+// tree is a measured zero; only unavailable/truncated tree data returns null.
 export function trackedFileCount(repo: RepoSummary): number | null {
   if (repo.languageFilesComplete === false) return null;
-  const files = Object.values(repo.languageFiles ?? {});
-  if (files.length === 0) return null;
-  const total = files.reduce((sum, count) => sum + count, 0);
-  return total > 0 ? total : null;
+  if (!repo.languageFiles) return null;
+  return Object.values(repo.languageFiles).reduce((sum, count) => sum + count, 0);
 }
