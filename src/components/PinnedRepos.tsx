@@ -5,8 +5,7 @@ import { ExternalLink, GitFork, Pin, Star } from "lucide-react";
 import { compactNumber, formatNumber } from "@/lib/format";
 import { trackedFileCount } from "@/lib/repo-filter";
 import { overlayPinnedRepos } from "@/lib/pinned-overlay";
-import type { PinnedRepo } from "@/lib/types";
-import type { RepoSummary } from "@/lib/types";
+import type { PinnedRepo, RepoSummary } from "@/lib/types";
 import { useLiveDataStore } from "@/store/live-data-store";
 
 function repoMetrics(repo: RepoSummary | undefined) {
@@ -32,86 +31,80 @@ export default function PinnedRepos({ repos, allRepos }: { repos: PinnedRepo[] |
         </p>
       </div>
       <div className="grid flex-1 gap-4 sm:grid-cols-2">
-        {displayed.map((repo, index) => (
-          (() => {
-            const metrics = repoMetrics(liveRepos.find((candidate) => candidate.fullName === repo.fullName));
-            return (
-          <motion.article
-            key={repo.fullName}
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 0.35, delay: index * 0.05 }}
-            whileHover={{ y: -3, borderColor: "var(--cyan)" }}
-            whileTap={{ scale: 0.985 }}
-            className="group relative flex flex-col gap-3 rounded-lg border border-hairline bg-surface/80 p-4 pb-3 backdrop-blur-sm transition-[border-color,opacity,transform,background-color] hover:bg-surface-raised/60"
-          >
-            <div>
-              <div className="flex items-start justify-between gap-3">
-                <a
-                  href={repo.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex min-w-0 items-start justify-between gap-3 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
-                >
-                  <h3 className="truncate font-display text-[15px] font-semibold text-text">{repo.name}</h3>
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-text-faint transition-colors group-hover:text-amber" aria-hidden="true" />
-                </a>
-              </div>
-              <p className="mt-2 min-h-[32px] line-clamp-2 text-xs leading-relaxed text-text-muted">
-                {repo.description || "No description provided."}
-              </p>
-              <div className="mt-2 truncate font-mono text-[10px] text-text-faint">
-                {repo.visibility ?? "public"} · {repo.openIssues ?? 0} open issues
-                {repo.createdAt && ` · since ${new Date(repo.createdAt).getUTCFullYear()}`}
-              </div>
-              {repo.homepage && (
-                <a
-                  href={repo.homepage}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 block truncate font-mono text-[10px] text-cyan hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
-                >
-                  Live site: {repo.homepage.replace(/^https?:\/\//, "")}
-                </a>
-              )}
-              {!!repo.topics?.length && <div className="truncate font-mono text-[10px] text-text-faint">#{repo.topics.join(" #")}</div>}
-              <div className="font-mono text-[10px] text-text-faint">
-                {metrics?.files ? `${formatNumber(metrics.files)} recognized files` : "file counts unavailable"}
-              </div>
-            </div>
-            <div className="mt-auto flex items-center gap-3 border-t border-hairline/60 pt-2 font-mono text-[11px] text-text-faint">
-              {repo.primaryLanguage && (
-                <span className="flex items-center gap-1.5">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: repo.primaryLanguage.color }}
-                  />
-                  {repo.primaryLanguage.name}
-                </span>
-              )}
-              <span className="ml-auto flex items-center gap-1">
-                <Star className="h-3 w-3" aria-hidden="true" />
-                {compactNumber(repo.stargazerCount)}
-              </span>
-              <span className="flex items-center gap-1">
-                <GitFork className="h-3 w-3" aria-hidden="true" />
-                {compactNumber(repo.forkCount)}
-              </span>
-            </div>
-            <div
-              className="flex h-1.5 w-full overflow-hidden rounded-full"
-              aria-label={repo.primaryLanguage ? `${repo.primaryLanguage.name} language` : "Language unavailable"}
+        {displayed.map((repo, index) => {
+          const metrics = repoMetrics(liveRepos.find((candidate) => candidate.fullName === repo.fullName));
+          return (
+            <motion.article
+              key={repo.fullName}
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.35, delay: index * 0.05 }}
+              whileHover={{ y: -3, borderColor: "var(--cyan)" }}
+              whileTap={{ scale: 0.985 }}
+              className="group relative flex flex-col gap-3 rounded-lg border border-hairline bg-surface/80 p-4 pb-3 backdrop-blur-sm transition-[border-color,opacity,transform,background-color] hover:bg-surface-raised/60"
             >
-              <span
-                className="h-full w-full"
-                style={{ background: repo.primaryLanguage?.color ?? "var(--hairline)" }}
-              />
-            </div>
-          </motion.article>
-            );
-          })()
-        ))}
+              <div>
+                <div className="flex items-start justify-between gap-3">
+                  <a
+                    href={repo.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-w-0 items-start justify-between gap-3 rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
+                  >
+                    <h3 className="truncate font-display text-[15px] font-semibold text-text">{repo.name}</h3>
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-text-faint transition-colors group-hover:text-amber" aria-hidden="true" />
+                  </a>
+                </div>
+                <p className="mt-2 min-h-[32px] line-clamp-2 text-xs leading-relaxed text-text-muted">
+                  {repo.description || "No description provided."}
+                </p>
+                <div className="mt-2 truncate font-mono text-[10px] text-text-faint">
+                  {repo.visibility ?? "public"} · {repo.openIssues ?? 0} open issues + PRs
+                  {repo.createdAt && ` · since ${new Date(repo.createdAt).getUTCFullYear()}`}
+                </div>
+                {repo.homepage && (
+                  <a
+                    href={repo.homepage}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 block truncate font-mono text-[10px] text-cyan hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan"
+                  >
+                    Live site: {repo.homepage.replace(/^https?:\/\//, "")}
+                  </a>
+                )}
+                {!!repo.topics?.length && <div className="truncate font-mono text-[10px] text-text-faint">#{repo.topics.join(" #")}</div>}
+                <div className="font-mono text-[10px] text-text-faint">
+                  {metrics?.files !== null && metrics?.files !== undefined
+                    ? `${formatNumber(metrics.files)} recognized files`
+                    : "file counts unavailable"}
+                </div>
+              </div>
+              <div className="mt-auto flex items-center gap-3 border-t border-hairline/60 pt-2 font-mono text-[11px] text-text-faint">
+                {repo.primaryLanguage && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: repo.primaryLanguage.color }} />
+                    {repo.primaryLanguage.name}
+                  </span>
+                )}
+                <span className="ml-auto flex items-center gap-1">
+                  <Star className="h-3 w-3" aria-hidden="true" />
+                  {compactNumber(repo.stargazerCount)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <GitFork className="h-3 w-3" aria-hidden="true" />
+                  {compactNumber(repo.forkCount)}
+                </span>
+              </div>
+              <div
+                className="flex h-1.5 w-full overflow-hidden rounded-full"
+                aria-label={repo.primaryLanguage ? `${repo.primaryLanguage.name} language` : "Language unavailable"}
+              >
+                <span className="h-full w-full" style={{ background: repo.primaryLanguage?.color ?? "var(--hairline)" }} />
+              </div>
+            </motion.article>
+          );
+        })}
       </div>
     </section>
   );

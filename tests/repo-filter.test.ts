@@ -33,6 +33,18 @@ describe("filterRepos", () => {
     expect(result.map((r) => r.name)).toEqual(["gamma"]);
   });
 
+  it("uses a newly discovered repo's known primary language when detailed language data is unavailable", () => {
+    const fresh = repo({ name: "delta", fullName: "user/delta", language: "TypeScript", languages: undefined });
+    const result = filterRepos([fresh], { ...options, language: "TypeScript" });
+    expect(result.map((r) => r.name)).toEqual(["delta"]);
+  });
+
+  it("does not match an unrelated primary language when there is no detailed map", () => {
+    const bare = repo({ name: "delta", fullName: "user/delta", language: "Rust", languages: undefined });
+    const result = filterRepos([bare], { ...options, language: "TypeScript" });
+    expect(result).toHaveLength(0);
+  });
+
   it("filters by topic", () => {
     const result = filterRepos(REPOS, { ...options, topic: "cli" });
     expect(result.map((r) => r.name).sort()).toEqual(["alpha", "gamma"]);
@@ -52,22 +64,19 @@ describe("filterRepos", () => {
     const result = filterRepos(REPOS, { ...options, sortBy: "stars" });
     expect(result.map((r) => r.name)).toEqual(["beta", "alpha", "gamma"]);
   });
-
-  it("does not match a language when the repo has no language map", () => {
-    const bare = repo({ name: "delta", fullName: "user/delta", languages: undefined });
-    const result = filterRepos([bare], { ...options, language: "TypeScript" });
-    expect(result).toHaveLength(0);
-  });
 });
 
 describe("trackedFileCount", () => {
   it("returns the total of recognized language files", () => {
-    expect(trackedFileCount(repo({ name: "a", fullName: "u/a", languageFiles: { TypeScript: 4, Go: 6 } }))).toBe(10);
+    expect(trackedFileCount(repo({ name: "a", fullName: "u/a", languageFiles: { TypeScript: 4, Go: 6 }, languageFilesComplete: true }))).toBe(10);
   });
 
-  it("returns null when there is no tree data instead of faking a zero", () => {
+  it("returns null when there is no tree data", () => {
     expect(trackedFileCount(repo({ name: "a", fullName: "u/a", languageFiles: undefined }))).toBeNull();
-    expect(trackedFileCount(repo({ name: "a", fullName: "u/a", languageFiles: {} }))).toBeNull();
+  });
+
+  it("returns zero for a complete tree with zero recognized files", () => {
+    expect(trackedFileCount(repo({ name: "a", fullName: "u/a", languageFiles: {}, languageFilesComplete: true }))).toBe(0);
   });
 
   it("returns null when the tree was truncated so a partial count is never authoritative", () => {

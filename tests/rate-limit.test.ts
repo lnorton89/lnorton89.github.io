@@ -18,9 +18,31 @@ describe("classifyRateLimit", () => {
     });
   });
 
+  it("recognizes 429 with remaining 0 as primary rather than secondary", () => {
+    expect(classifyRateLimit(429, "0", "1700000000", null)).toMatchObject({
+      isRateLimited: true,
+      kind: "primary",
+    });
+  });
+
+  it("recognizes secondary-limit 403 responses from retry-after", () => {
+    expect(classifyRateLimit(403, "42", null, "60")).toMatchObject({
+      isRateLimited: true,
+      kind: "secondary",
+      retryAfter: "60",
+    });
+  });
+
+  it("recognizes secondary-limit 403 responses from GitHub's message", () => {
+    expect(classifyRateLimit(403, "42", null, null, "You have exceeded a secondary rate limit.")).toMatchObject({
+      isRateLimited: true,
+      kind: "secondary",
+    });
+  });
+
   it("does NOT call a generic 403 a rate limit", () => {
     expect(classifyRateLimit(403, "59", "1700000000", null).isRateLimited).toBe(false);
-    expect(classifyRateLimit(403, null, null, null).isRateLimited).toBe(false);
+    expect(classifyRateLimit(403, null, null, null, "Resource not accessible").isRateLimited).toBe(false);
   });
 
   it("treats 404/500 as not rate-limited", () => {

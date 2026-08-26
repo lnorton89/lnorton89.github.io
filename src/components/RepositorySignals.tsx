@@ -13,7 +13,13 @@ export default function RepositorySignals({ repos }: { repos: RepoSummary[] }) {
   const displayedRepos = live?.topRepos ?? repos;
   const stars = displayedRepos.reduce((sum, repo) => sum + repo.stars, 0);
   const forks = displayedRepos.reduce((sum, repo) => sum + repo.forks, 0);
-  const issues = displayedRepos.reduce((sum, repo) => sum + repo.openIssues, 0);
+  const openItems = displayedRepos.reduce((sum, repo) => sum + repo.openIssues, 0);
+  const knownLanguages = new Set(
+    displayedRepos.flatMap((repo) => {
+      const detailed = Object.keys(repo.languages ?? {});
+      return detailed.length > 0 ? detailed : repo.language ? [repo.language] : [];
+    })
+  );
   const topics = Object.entries(
     displayedRepos.flatMap((repo) => repo.topics).reduce<Record<string, number>>((counts, topic) => {
       counts[topic] = (counts[topic] ?? 0) + 1;
@@ -32,8 +38,8 @@ export default function RepositorySignals({ repos }: { repos: RepoSummary[] }) {
   const stats = [
     { label: "stars earned", value: stars, icon: Star, color: "text-amber" },
     { label: "community forks", value: forks, icon: GitFork, color: "text-cyan" },
-    { label: "open issues", value: issues, icon: CircleDot, color: "text-danger" },
-    { label: "languages tracked", value: new Set(displayedRepos.flatMap((repo) => Object.keys(repo.languages ?? {}))).size, icon: Languages, color: "text-cyan" },
+    { label: "open issues + PRs", value: openItems, icon: CircleDot, color: "text-danger" },
+    { label: "languages known", value: knownLanguages.size, icon: Languages, color: "text-cyan" },
   ];
 
   return (

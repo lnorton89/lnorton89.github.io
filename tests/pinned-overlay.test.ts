@@ -11,6 +11,7 @@ function pinned(overrides: Partial<PinnedRepo> = {}): PinnedRepo {
     stargazerCount: 1,
     forkCount: 0,
     primaryLanguage: { name: "TypeScript", color: "#4f8cff" },
+    topics: ["old-topic"],
     ...overrides,
   };
 }
@@ -43,9 +44,23 @@ describe("overlayPinnedRepos", () => {
     expect(result[0].openIssues).toBe(2);
     expect(result[0].description).toBe("refreshed description");
     expect(result[0].topics).toEqual(["cli", "fresh"]);
-    // Build-only pinned info is preserved.
     expect(result[0].primaryLanguage).toEqual({ name: "TypeScript", color: "#4f8cff" });
     expect(result[0].fullName).toBe("user/alpha");
+  });
+
+  it("accepts an empty fresh topics array instead of resurrecting stale topics", () => {
+    const result = overlayPinnedRepos([pinned()], [repo({ topics: [] })]);
+    expect(result[0].topics).toEqual([]);
+  });
+
+  it("updates the pinned primary language from refreshed REST metadata", () => {
+    const result = overlayPinnedRepos([pinned()], [repo({ language: "Rust" })]);
+    expect(result[0].primaryLanguage).toEqual({ name: "Rust", color: "#d77a61" });
+  });
+
+  it("clears the pinned primary language when refreshed metadata has none", () => {
+    const result = overlayPinnedRepos([pinned()], [repo({ language: null })]);
+    expect(result[0].primaryLanguage).toBeNull();
   });
 
   it("keeps the build-time pinned record when there is no refreshed match", () => {

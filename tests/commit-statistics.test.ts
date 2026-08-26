@@ -61,7 +61,7 @@ describe("mergeContributorWeeks", () => {
     const contributorWeeks = [
       { w: new Date("2026-08-23T00:00:00Z").getTime() / 1000, c: 3 },
       { w: new Date("2026-08-16T00:00:00Z").getTime() / 1000, c: 5 },
-      { w: 0, c: 10 }, // out of range week start -> ignored
+      { w: 0, c: 10 },
     ];
     const merged = mergeContributorWeeks(scaffold, contributorWeeks);
     expect(merged[51].commits).toBe(3);
@@ -74,23 +74,22 @@ describe("finalizeWeeklyCommits", () => {
   it("returns complete data when every repository is covered", () => {
     const scaffold = buildWeeklyScaffold(NOW);
     const results = [
-      { status: "covered", contributorWeeks: [{ w: new Date("2026-08-23T00:00:00Z").getTime() / 1000, c: 2 }] },
-      { status: "covered", contributorWeeks: [] }, // user not listed -> zero
+      { status: "covered", repoName: "alpha", contributorWeeks: [{ w: new Date("2026-08-23T00:00:00Z").getTime() / 1000, c: 2 }] },
+      { status: "covered", repoName: "beta", contributorWeeks: [] },
     ];
     const { weeklyCommits, weeklyCommitsCoverage } = finalizeWeeklyCommits(scaffold, results);
     expect(weeklyCommitsCoverage.complete).toBe(true);
     expect(weeklyCommitsCoverage.coveredRepos).toBe(2);
     expect(weeklyCommits[51].commits).toBe(2);
     expect(weeklyCommits[50].commits).toBe(0);
-    expect(weeklyCommits.some((w) => w.commits === null)).toBe(false);
   });
 
-  it("marks the dataset incomplete (all weeks null) when a repo is pending or failed", () => {
+  it("keeps known numeric data while explicitly marking partial coverage", () => {
     const scaffold = buildWeeklyScaffold(NOW);
     const results = [
-      { status: "covered", contributorWeeks: [] },
-      { status: "pending" },
-      { status: "failed" },
+      { status: "covered", repoName: "alpha", contributorWeeks: [{ w: new Date("2026-08-23T00:00:00Z").getTime() / 1000, c: 4 }] },
+      { status: "pending", repoName: "beta" },
+      { status: "failed", repoName: "gamma" },
     ];
     const { weeklyCommits, weeklyCommitsCoverage } = finalizeWeeklyCommits(scaffold, results);
     expect(weeklyCommitsCoverage).toEqual({
@@ -99,8 +98,28 @@ describe("finalizeWeeklyCommits", () => {
       coveredRepos: 1,
       pendingRepos: 1,
       failedRepos: 1,
+      pendingRepoNames: ["beta"],
+      failedRepoNames: ["gamma"],
     });
-    expect(weeklyCommits.every((w) => w.commits === null)).toBe(true);
+    expect(weeklyCommits[51].commits).toBe(4);
+    expect(weeklyCommits.every((week) => typeof week.commits === "number")).toBe(true);
+  });
+
+  it("handles 41/42 coverage without discarding the measured aggregate", () => {
+    const scaffold = buildWeeklyScaffold(NOW);
+    const results = Array.from({ length: 41 }, (_, index) => ({
+      status: "covered",
+      repoName: `repo-${index}`,
+      contributorWeeks: index === 0
+        ? [{ w: new Date("2026-08-23T00:00:00Z").getTime() / 1000, c: 7 }]
+        : [],
+    }));
+    results.push({ status: "pending", repoName: "repo-pending", contributorWeeks: [] });
+    const { weeklyCommits, weeklyCommitsCoverage } = finalizeWeeklyCommits(scaffold, results);
+    expect(weeklyCommitsCoverage.complete).toBe(false);
+    expect(weeklyCommitsCoverage.coveredRepos).toBe(41);
+    expect(weeklyCommitsCoverage.eligibleRepos).toBe(42);
+    expect(weeklyCommits[51].commits).toBe(7);
   });
 });
 

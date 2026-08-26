@@ -2,6 +2,15 @@ import type { GithubSnapshot, FeedItem, RefreshableRepo } from "@/lib/types";
 import { mergeSnapshot } from "@/lib/merge-snapshot";
 
 const REST = "https://api.github.com";
+const SUPPORTED_EVENTS = new Set([
+  "PushEvent",
+  "PullRequestEvent",
+  "IssuesEvent",
+  "IssueCommentEvent",
+  "CreateEvent",
+  "ReleaseEvent",
+  "WatchEvent",
+]);
 
 export class GithubApiError extends Error {
   constructor(
@@ -10,6 +19,7 @@ export class GithubApiError extends Error {
     public readonly rateLimitRemaining: string | null,
     public readonly rateLimitReset: string | null,
     public readonly retryAfter: string | null,
+    public readonly responseMessage: string | null,
   ) {
     super(`GitHub API ${path} failed: ${status}`);
     this.name = "GithubApiError";
@@ -21,22 +31,29 @@ async function get<T>(path: string): Promise<T> {
     headers: { Accept: "application/vnd.github+json" },
   });
   if (!res.ok) {
+    const body = await res.text();
+    let responseMessage: string | null = body || null;
+    try {
+      const parsed = JSON.parse(body) as { message?: unknown };
+      if (typeof parsed.message === "string") responseMessage = parsed.message;
+    } catch {
+      // Plain-text errors are still useful for rate-limit classification.
+    }
     throw new GithubApiError(
       path,
       res.status,
       res.headers.get("x-ratelimit-remaining"),
       res.headers.get("x-ratelimit-reset"),
       res.headers.get("retry-after"),
+      responseMessage,
     );
   }
   return res.json();
 }
 
 // Refreshes the parts of the snapshot that unauthenticated REST calls can see.
-// Keep this to three requests per refresh: browsers share GitHub's 60 req/hr
-// anonymous limit, so per-repository language or tree requests are not safe to
-// poll. Fresh repository metadata is merged by fullName over the build-time
-// records (see mergeSnapshot) so enriched fields are never lost.
+// Keep this to three requests per refresh: browsers share GitHub's anonymous
+// rate limit, so per-repository language/tree/stat requests are not safe here.
 export async function fetchLiveSnapshot(
   username: string,
   base: GithubSnapshot
@@ -85,7 +102,9 @@ export async function fetchLiveSnapshot(
   const [profile, repos, events] = await Promise.all([
     get<RestProfile>(`/users/${username}`),
     get<RestRepo[]>(`/users/${username}/repos?per_page=100&sort=pushed&direction=desc`),
-    get<RestEvent[]>(`/users/${username}/events/public?per_page=30`),
+    // Request a larger single page, then filter locally. Unsupported event types
+    // should not crowd useful activity out of the 30-item display window.
+    get<RestEvent[]>(`/users/${username}/events/public?per_page=100`),
   ]);
 
   const refreshableRepos: RefreshableRepo[] = repos
@@ -99,6 +118,9 @@ export async function fetchLiveSnapshot(
       language: r.language,
       stars: r.stargazers_count,
       forks: r.forks_count,
+      // GitHub's REST field includes both issues and pull requests. The current
+      // model keeps its historical property name, while UI copy calls it out as
+      // combined open items.
       openIssues: r.open_issues_count,
       pushedAt: r.pushed_at,
       createdAt: r.created_at,
@@ -106,30 +128,14 @@ export async function fetchLiveSnapshot(
       visibility: r.visibility,
     }));
 
-  const feed: FeedItem[] = await Promise.all(events
-    .filter((e) =>
-      ["PushEvent", "PullRequestEvent", "IssuesEvent", "IssueCommentEvent", "CreateEvent", "ReleaseEvent", "WatchEvent"]
-        .includes(e.type)
-    )
-    .slice(0, 30)
-    .map(async (e) => ({
-    id: e.id,
-    type: e.type,
-    repo: e.repo?.name ?? "",
-    createdAt: e.created_at,
-    summary: summarize(e),
-    detail: await detail(e),
-    url: eventUrl(e),
-    commits: e.type === "PushEvent"
-      ? ((e.payload.commits as Array<{ sha?: string; message?: string }> | undefined) ?? [])
-          .filter((commit) => commit.sha)
-          .map((commit) => ({
-            sha: commit.sha as string,
-            message: commit.message?.split("\n")[0] ?? "commit message unavailable",
-            url: e.repo?.name ? `https://github.com/${e.repo.name}/commit/${commit.sha}` : undefined,
-          }))
-      : undefined,
-  })));
+  const supportedEvents = events
+    .filter((event) => SUPPORTED_EVENTS.has(event.type))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 30);
+
+  const feed: FeedItem[] = await Promise.all(
+    supportedEvents.map(async (event) => normalizeEvent(event))
+  );
 
   return mergeSnapshot(
     base,
@@ -155,11 +161,55 @@ export async function fetchLiveSnapshot(
   );
 }
 
+async function normalizeEvent(e: {
+  id: string;
+  type: string;
+  repo?: { name: string };
+  created_at: string;
+  payload: Record<string, unknown>;
+}): Promise<FeedItem> {
+  const payload = e.payload;
+  const action = typeof payload.action === "string" ? payload.action : undefined;
+  const ref = typeof payload.ref === "string" ? payload.ref : undefined;
+  const pushSize = e.type === "PushEvent" && typeof payload.size === "number"
+    ? payload.size
+    : undefined;
+
+  return {
+    id: e.id,
+    type: e.type,
+    repo: e.repo?.name ?? "",
+    createdAt: e.created_at,
+    summary: summarize(e),
+    detail: await detail(e),
+    url: eventUrl(e),
+    action,
+    ref,
+    pushSize,
+    commits: e.type === "PushEvent"
+      ? dedupeCommits(
+          ((payload.commits as Array<{ sha?: string; message?: string }> | undefined) ?? [])
+            .filter((commit) => commit.sha)
+            .map((commit) => ({
+              sha: commit.sha as string,
+              message: commit.message?.split("\n")[0] ?? "commit message unavailable",
+              url: e.repo?.name ? `https://github.com/${e.repo.name}/commit/${commit.sha}` : undefined,
+            }))
+        )
+      : undefined,
+  };
+}
+
+function dedupeCommits(commits: NonNullable<FeedItem["commits"]>): NonNullable<FeedItem["commits"]> {
+  return Array.from(new Map(commits.map((commit) => [commit.sha, commit])).values());
+}
+
 function summarize(e: { type: string; payload: Record<string, unknown> }): string {
   switch (e.type) {
     case "PushEvent": {
       const commits = e.payload.commits as unknown[] | undefined;
-      const count = Math.max(1, commits?.length ?? 0);
+      const payloadSize = typeof e.payload.size === "number" ? e.payload.size : undefined;
+      const count = Math.max(1, payloadSize ?? commits?.length ?? 0);
       return `pushed ${count} commit${count === 1 ? "" : "s"}`;
     }
     case "PullRequestEvent":

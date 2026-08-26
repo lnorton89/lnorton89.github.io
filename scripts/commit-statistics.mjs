@@ -1,11 +1,9 @@
 // Pure helpers for per-contributor commit statistics. The build script
 // (fetch-github-data.mjs) fetches /repos/{owner}/{repo}/stats/contributors and
-// feeds the results through these functions; the tests exercise the same logic
-// without any network access.
+// feeds the results through these functions; tests exercise the same logic.
 
 export const WEEKS = 52;
 
-// Builds the 52-week scaffold anchored to the current week, oldest first.
 export function buildWeeklyScaffold(now = new Date()) {
   const weeks = [];
   for (let i = 51; i >= 0; i -= 1) {
@@ -18,8 +16,8 @@ export function buildWeeklyScaffold(now = new Date()) {
 }
 
 // GET /repos/{owner}/{repo}/stats/contributors. Returns the contributors array
-// on 200, [] for a 204 (measured zero), or null when the bounded 202 retries
-// are exhausted (statistics still generating).
+// on 200, [] for 204 (measured zero), or null when GitHub is still generating
+// statistics after the bounded retry budget.
 export async function contributorCommitActivity(
   username,
   repoName,
@@ -29,27 +27,16 @@ export async function contributorCommitActivity(
   for (let attempt = 0; attempt < retryAttempts; attempt += 1) {
     const res = await fetch(url, { headers });
     if (res.status === 202) {
-      // GitHub is still generating statistics for this repository. Wait briefly
-      // and retry a bounded number of times instead of treating it as empty.
       if (attempt < retryAttempts - 1) await new Promise((resolve) => setTimeout(resolve, waitMs));
       continue;
     }
-    if (res.status === 204) {
-      // No contributor activity in the window: measured zero, not missing.
-      return [];
-    }
+    if (res.status === 204) return [];
     if (!res.ok) throw new Error(`GET ${url} -> ${res.status} ${await res.text()}`);
     return res.json();
   }
-  // Exhausted the bounded 202 retries: statistics are still generating.
   return null;
 }
 
-// Finds the weekly commit counts attributable to `login` within a
-// `/stats/contributors` response. GitHub stats endpoints return 0-values for
-// addition/deletion in very large repos, but `weeks[].c` (commits) is real.
-// A successful response that does not list the user means the user authored
-// no commits there — measured zero, not missing data.
 export function findContributorWeeks(contributors, login) {
   if (!Array.isArray(contributors)) return { found: false, weeks: [] };
   const target = (login || "").toLowerCase();
@@ -60,7 +47,6 @@ export function findContributorWeeks(contributors, login) {
   return { found: true, weeks: Array.isArray(entry.weeks) ? entry.weeks : [] };
 }
 
-// Sums a contributor's weekly `c` counts into a scaffold, returning a new array.
 export function mergeContributorWeeks(scaffold, contributorWeeks) {
   const out = scaffold.map((week) => ({ ...week }));
   for (const week of contributorWeeks || []) {
@@ -72,16 +58,16 @@ export function mergeContributorWeeks(scaffold, contributorWeeks) {
   return out;
 }
 
-// Aggregates per-repository outcomes into the final weekly dataset and
-// coverage metadata. A repository is only "covered" when its statistics
-// endpoint returned data (200/204). If any repository is pending (202 retries
-// exhausted) or failed, the dataset is marked incomplete: every week is set to
-// null rather than presenting an authoritative-looking undercount.
+// Preserve all known measurements even when one repository is pending/failed.
+// Coverage metadata qualifies the aggregate so partial data is never mistaken
+// for a complete total, while 41/42 good repositories no longer disappear.
 export function finalizeWeeklyCommits(scaffold, results) {
   let coveredRepos = 0;
   let pendingRepos = 0;
   let failedRepos = 0;
   let weeks = scaffold.map((week) => ({ ...week }));
+  const pendingRepoNames = [];
+  const failedRepoNames = [];
 
   for (const result of results) {
     if (result.status === "covered") {
@@ -89,20 +75,24 @@ export function finalizeWeeklyCommits(scaffold, results) {
       weeks = mergeContributorWeeks(weeks, result.contributorWeeks ?? []);
     } else if (result.status === "pending") {
       pendingRepos += 1;
+      if (result.repoName) pendingRepoNames.push(result.repoName);
     } else {
       failedRepos += 1;
+      if (result.repoName) failedRepoNames.push(result.repoName);
     }
   }
 
   const complete = coveredRepos === results.length;
   return {
-    weeklyCommits: complete ? weeks : weeks.map((week) => ({ ...week, commits: null })),
+    weeklyCommits: weeks,
     weeklyCommitsCoverage: {
       complete,
       eligibleRepos: results.length,
       coveredRepos,
       pendingRepos,
       failedRepos,
+      pendingRepoNames,
+      failedRepoNames,
     },
   };
 }

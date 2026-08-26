@@ -24,6 +24,7 @@ export interface RefreshableRepo {
   language: string | null;
   stars: number;
   forks: number;
+  /** GitHub REST open_issues_count: open issues AND pull requests. */
   openIssues: number;
   pushedAt: string;
   createdAt: string;
@@ -54,6 +55,7 @@ export interface PinnedRepo {
   primaryLanguage: { name: string; color: string } | null;
   homepage?: string | null;
   visibility?: string;
+  /** Combined open issue + pull-request count when sourced from REST. */
   openIssues?: number;
   createdAt?: string;
   topics?: string[];
@@ -68,6 +70,12 @@ export interface FeedItem {
   detail?: string;
   url?: string;
   commits?: FeedCommit[];
+  /** GitHub event action, used to avoid grouping unlike actions together. */
+  action?: string;
+  /** Push/Create ref when available. */
+  ref?: string;
+  /** Authoritative PushEvent payload.size when available. */
+  pushSize?: number;
 }
 
 export interface FeedCommit {
@@ -78,6 +86,7 @@ export interface FeedCommit {
 
 export interface WeeklyCommits {
   weekStart: string;
+  /** Known commits from covered repositories. Coverage qualifies completeness. */
   commits: number | null;
 }
 
@@ -105,8 +114,8 @@ export interface ContributionsCollection {
 // The persisted snapshot. Two kinds of data live side by side and must never
 // overwrite each other:
 //   - build-snapshot fields: computed by scripts/fetch-github-data.mjs at build
-//     time (language bytes, source-file counts, contribution calendar, weekly
-//     commit history). A manual client refresh carries these through verbatim.
+//     time (language bytes, recognized-file counts, contribution calendar,
+//     weekly commit history). A manual client refresh carries these through.
 //   - refreshable fields: cheap enough for an unauthenticated browser request
 //     (profile, repo metadata, recent events). Only these change on "Sync now".
 export interface GithubSnapshot {
@@ -132,6 +141,8 @@ export interface WeeklyCommitsCoverage {
   coveredRepos: number;
   pendingRepos: number;
   failedRepos: number;
+  pendingRepoNames?: string[];
+  failedRepoNames?: string[];
 }
 
 // Explains what the dashboard's tracked repository set covers versus the full
