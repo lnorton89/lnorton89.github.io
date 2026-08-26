@@ -1,16 +1,10 @@
-// GitHub rate-limit classification. A 403 is NOT automatically a rate limit:
-// GitHub returns plain 403 for forbidden requests too. A genuine rate limit is
-// signalled by the combination of status and rate-limit headers:
-//   - 429 (secondary rate limit) — usually carries `retry-after`
-//   - 403 with `x-ratelimit-remaining: 0` (primary rate limit) — carries
-//     `x-ratelimit-reset` (epoch seconds)
+// GitHub rate-limit classification. A plain 403 is not automatically a rate
+// limit: primary and secondary limits need to be distinguished from ordinary
+// forbidden responses.
 export interface RateLimitInfo {
   isRateLimited: boolean;
-  /** "primary" | "secondary" | "none" */
   kind: "primary" | "secondary" | "none";
-  /** Epoch-seconds string when a reset time is available. */
   resetAt: string | null;
-  /** Seconds until retry when a retry-after header is available. */
   retryAfter: string | null;
 }
 
@@ -18,17 +12,11 @@ export function classifyRateLimit(
   status: number,
   rateLimitRemaining: string | null,
   rateLimitReset: string | null,
-  retryAfter: string | null
+  retryAfter: string | null,
+  responseMessage: string | null = null
 ): RateLimitInfo {
-  if (status === 429) {
-    return {
-      isRateLimited: true,
-      kind: "secondary",
-      resetAt: rateLimitReset,
-      retryAfter,
-    };
-  }
-  if (status === 403 && rateLimitRemaining === "0") {
+  const limitedStatus = status === 403 || status === 429;
+  if (limitedStatus && rateLimitRemaining === "0") {
     return {
       isRateLimited: true,
       kind: "primary",
@@ -36,6 +24,17 @@ export function classifyRateLimit(
       retryAfter,
     };
   }
+
+  const messageSignalsSecondary = /secondary rate limit|abuse detection/i.test(responseMessage ?? "");
+  if (limitedStatus && (retryAfter || messageSignalsSecondary || status === 429)) {
+    return {
+      isRateLimited: true,
+      kind: "secondary",
+      resetAt: rateLimitReset,
+      retryAfter,
+    };
+  }
+
   return { isRateLimited: false, kind: "none", resetAt: null, retryAfter: null };
 }
 
