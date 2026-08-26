@@ -1,10 +1,9 @@
+import { languageColor } from "@/lib/format";
 import type { PinnedRepo, RepoSummary } from "@/lib/types";
 
-// Pinned-project ordering and identity are build-time GraphQL data (the pinned
-// set is not queryable from the unauthenticated REST refresh). After a manual
-// refresh, only the underlying repository's cheap metadata can be updated.
-// Match by full repository identity (owner/name) — never by bare repo name —
-// and keep pinned-only fields (ordering, primary language) untouched.
+// Pinned-project ordering and identity are build-time GraphQL data. A manual
+// refresh keeps that set/order but overlays repository metadata available from
+// the existing cheap REST response. Match by owner/name, never bare repo name.
 export function overlayPinnedRepos(
   pinned: PinnedRepo[] | null,
   topRepos: RepoSummary[]
@@ -23,7 +22,11 @@ export function overlayPinnedRepos(
       homepage: fresh.homepage,
       visibility: fresh.visibility,
       openIssues: fresh.openIssues,
-      topics: fresh.topics.length > 0 ? fresh.topics : repo.topics,
+      // An empty topics array is valid fresh data; do not resurrect stale tags.
+      topics: fresh.topics,
+      primaryLanguage: fresh.language
+        ? { name: fresh.language, color: languageColor(fresh.language) }
+        : null,
     };
   });
 }
